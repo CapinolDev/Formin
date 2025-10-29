@@ -1,4 +1,5 @@
 program interpreter
+    use terminal_colors
     implicit none
 
     integer :: ios
@@ -61,6 +62,8 @@ program interpreter
                     write(*,'(A)') trim(tokens(1))
                 end if
             end if
+            case('color')
+                call set_color(tokens(1))
 
             case ("create")
                 if (ntok >= 2) then
