@@ -9,7 +9,7 @@ program interpreter
     character(len=256) :: tokens(10)
     integer :: ntok
     character(len=256) :: outAdd 
-    integer :: a, b, sum, ios_local, sub
+    integer :: a, b, sum, ios_local, sub, mult, div
     character(len=256) :: s1, s2
 
     type :: Var
@@ -108,8 +108,6 @@ program interpreter
                 end if
             case ("sub")
                 if (ntok == 3) then
-                    
-
                     if (any(trim(tokens(2)) == Vars(:)%name)) then
                         s1 = trim(getVar(trim(tokens(2))))
                     else
@@ -138,6 +136,68 @@ program interpreter
                     call setVar(trim(tokens(1)), trim(outAdd))
                 else
                     write(*,'(A)') "Error: sub requires exactly 3 tokens: name|lhs|rhs"
+                end if
+            case ("mult")
+                if (ntok == 3) then
+                    if (any(trim(tokens(2)) == Vars(:)%name)) then
+                        s1 = trim(getVar(trim(tokens(2))))
+                    else
+                        s1 = trim(tokens(2))
+                    end if
+
+                    if (any(trim(tokens(3)) == Vars(:)%name)) then
+                        s2 = trim(getVar(trim(tokens(3))))
+                    else
+                        s2 = trim(tokens(3))
+                    end if
+
+                    read(s1, *, iostat=ios_local) a
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: first operand multing is not an integer"
+                        cycle
+                    end if
+                    read(s2, *, iostat=ios_local) b
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: second operand multing not an integer"
+                        cycle
+                    end if
+
+                    mult = a * b
+                    write(outAdd, '(I0)') mult
+                    call setVar(trim(tokens(1)), trim(outAdd))
+                else
+                    write(*,'(A)') "Error: mult requires exactly 3 tokens: name|lhs|rhs"
+                end if
+            case("div")
+                if (ntok == 3) then
+                    if (any(trim(tokens(2)) == Vars(:)%name)) then
+                        s1 = trim(getVar(trim(tokens(2))))
+                    else
+                        s1 = trim(tokens(2))
+                    end if
+
+                    if (any(trim(tokens(3)) == Vars(:)%name)) then
+                        s2 = trim(getVar(trim(tokens(3))))
+                    else
+                        s2 = trim(tokens(3))
+                    end if
+
+                    read(s1, *, iostat=ios_local) a
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: first operand to div is not an integer"
+                        cycle
+                    end if
+                    read(s2, *, iostat=ios_local) b
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: second operand divving is not an integer"
+                        cycle
+                    end if
+
+                    div = a / b
+                    write(outAdd, '(I0)') div
+                    call setVar(trim(tokens(1)), trim(outAdd))
+                else
+                    write(*,'(A)') "Error: div requires exactly 3 tokens: name|lhs|rhs"
                 end if
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)

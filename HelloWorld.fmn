@@ -6,3 +6,7 @@ add#/z|x|y/#
 spew#/z/#
 sub#/z|z|10/#
 spew#/z/#
+mult#/mult|10|z/#
+spew#/mult/#
+div#/divTest|10|3/#
+spew#/divTest/#
