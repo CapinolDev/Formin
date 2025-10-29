@@ -1,13 +1,16 @@
 program interpreter
     implicit none
 
-    integer :: ios, num
+    integer :: ios
     character(len=256) :: fileName
     character(len=256) :: line
     character(len=256) :: command, value, val
     integer :: pos1, pos2
     character(len=256) :: tokens(10)
     integer :: ntok
+    character(len=256) :: outAdd 
+    integer :: a, b, sum, ios_local, sub
+    character(len=256) :: s1, s2
 
     type :: Var
         character(len=32) :: name
@@ -69,6 +72,72 @@ program interpreter
                     end if
                 else if (ntok == 1) then
                     call setVar(trim(tokens(1)), '')
+                end if
+            case ("add")          
+                if (ntok == 3) then
+                    
+
+                    if (any(trim(tokens(2)) == Vars(:)%name)) then
+                        s1 = trim(getVar(trim(tokens(2))))
+                    else
+                        s1 = trim(tokens(2))
+                    end if
+
+                    if (any(trim(tokens(3)) == Vars(:)%name)) then
+                        s2 = trim(getVar(trim(tokens(3))))
+                    else
+                        s2 = trim(tokens(3))
+                    end if
+
+                    read(s1, *, iostat=ios_local) a
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: first operand to add is not an integer"
+                        cycle
+                    end if
+                    read(s2, *, iostat=ios_local) b
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: second operand to add is not an integer"
+                        cycle
+                    end if
+
+                    sum = a + b
+                    write(outAdd, '(I0)') sum
+                    call setVar(trim(tokens(1)), trim(outAdd))
+                else
+                    write(*,'(A)') "Error: add requires exactly 3 tokens: name|lhs|rhs"
+                end if
+            case ("sub")
+                if (ntok == 3) then
+                    
+
+                    if (any(trim(tokens(2)) == Vars(:)%name)) then
+                        s1 = trim(getVar(trim(tokens(2))))
+                    else
+                        s1 = trim(tokens(2))
+                    end if
+
+                    if (any(trim(tokens(3)) == Vars(:)%name)) then
+                        s2 = trim(getVar(trim(tokens(3))))
+                    else
+                        s2 = trim(tokens(3))
+                    end if
+
+                    read(s1, *, iostat=ios_local) a
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: first operand to sub is not an integer"
+                        cycle
+                    end if
+                    read(s2, *, iostat=ios_local) b
+                    if (ios_local /= 0) then
+                        write(*,'(A)') "Error: second operand subbing not an integer"
+                        cycle
+                    end if
+
+                    sub = a - b
+                    write(outAdd, '(I0)') sub
+                    call setVar(trim(tokens(1)), trim(outAdd))
+                else
+                    write(*,'(A)') "Error: sub requires exactly 3 tokens: name|lhs|rhs"
                 end if
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
