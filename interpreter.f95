@@ -11,9 +11,11 @@ program interpreter
     integer :: ntok
     character(len=256) :: outAdd 
     integer :: a, b, sum, ios_local, sub, mult, div
-    character(len=256) :: s1, s2
+    character(len=256) :: s1, s2, tempRead
     integer :: lineInt
     integer :: lineNumber
+    character (len=1024) :: osSeperator
+    character (len=4) :: osClear
 
     type :: Var
         character(len=32) :: name
@@ -27,6 +29,13 @@ program interpreter
     type(Var), allocatable :: Vars(:)
     type(Marker), allocatable :: Markers(:)
     integer :: VarCount, MarkerCount
+
+    call get_environment_variable("PATH", osSeperator)
+    if (index(osSeperator, ";") > 0) then
+        osClear = 'cls'
+    else
+        osClear = 'clear'
+    end if
 
     VarCount = 0
     MarkerCount = 0
@@ -337,6 +346,16 @@ program interpreter
                 else
                     write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker (goes if not true))"
                 end if
+            case ("ask")
+                if (ntok==2) then
+                    write(*,*) (trim(tokens(1)))
+                    read(*,*) tempRead
+                    call setVar(trim(tokens(2)), tempRead)
+                else 
+                    print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
+                end if
+            case("clear")
+                call system(osClear)
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select

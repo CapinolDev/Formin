@@ -1,15 +1,18 @@
 color#/blue/#
 spew#/ Hello /#
-color#/green/#
-create#/x|46/#
+ask#/Write a number:|x/#
 ifgo#/x|is|6|isSix|isntSix/#
 bye
 
 mark#/isSix/#
+clear#//#
+color#/green/#
 spew#/It's six./#
 bye
 
 mark#/isntSix/#
+clear#//#
+color#/red/#
 spew#/It's not six./#
 bye
 
