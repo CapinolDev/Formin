@@ -1,15 +1,16 @@
 color#/blue/#
 spew#/ Hello /#
-create#/x|0/#
-mark#/Recurse/#
-add#/x|x|10/#
-spew#/x/#
-go#/Recurse2/#
-mark#/Recurse2/#
-add#/x|x|10/#
-spew#/x/#
-go#/Recurse3/#
-mark#/Recurse3/#
-add#/x|x|10/#
-spew#/x/#
+color#/green/#
+create#/x|6/#
+ifgo#/x|is|6|isSix/#
+ifgo#/x|isnt|6|isntSix/#
 bye
+
+mark#/isSix/#
+spew#/It's six./#
+bye
+
+mark#/isntSix/#
+spew#/It's not six./#
+bye
+

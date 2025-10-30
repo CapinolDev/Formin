@@ -254,7 +254,55 @@ program interpreter
                 else
                     write(*,*) "Error: go requires exactly 1 token (name)"
                 end if
+            case("ifgo")
+                if (ntok == 4) then
+                    if (any(trim(tokens(1)) == Vars(:)%name)) then
+                        s1 = trim(getVar(trim(tokens(1))))
+                    else
+                        s1 = trim(tokens(1))
+                    end if
 
+                    if (any(trim(tokens(3)) == Vars(:)%name)) then
+                        s2 = trim(getVar(trim(tokens(3))))
+                    else
+                        s2 = trim(tokens(3))
+                    end if
+                    if (trim(tokens(2)) == 'is') then
+                        if (s1 == s2) then
+                            lineInt = getMarker(trim(tokens(4)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                write(*,*) "Error: marker not found: ", trim(tokens(1))
+                            end if
+                        end if
+                    else if(trim(tokens(2)) == 'isnt') then
+                        if (s1 /= s2) then
+                            lineInt = getMarker(trim(tokens(4)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                write(*,*) "Error: marker not found: ", trim(tokens(1))
+                            end if
+                        end if
+                    else 
+                        write(*,*) "Error: comparison should either be is or isnt"
+                    end if
+                else
+                    write(*,*) "Error: ifgo requires 4 tokens (var1|comparison|var2|marker)"
+                end if
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
