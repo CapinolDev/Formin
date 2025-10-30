@@ -12,18 +12,27 @@ program interpreter
     character(len=256) :: outAdd 
     integer :: a, b, sum, ios_local, sub, mult, div
     character(len=256) :: s1, s2
+    integer :: lineInt
+    integer :: lineNumber
 
     type :: Var
         character(len=32) :: name
         character(len=256) :: value
     end type Var
+    type :: Marker
+        integer :: pos
+        character(len=256) :: name
+    end type Marker
 
     type(Var), allocatable :: Vars(:)
-    integer :: VarCount
+    type(Marker), allocatable :: Markers(:)
+    integer :: VarCount, MarkerCount
 
     VarCount = 0
+    MarkerCount = 0
     allocate(Vars(0))
-
+    allocate(Markers(0))
+    lineNumber = 0
 
     call get_command_argument(1, fileName)
 
@@ -41,6 +50,7 @@ program interpreter
     do
         read(1, '(A)', iostat=ios) line
         if (ios /= 0) exit
+        lineNumber = lineNumber + 1
 
         pos1 = index(line, '#/')
         pos2 = index(line, '/#')
@@ -202,6 +212,30 @@ program interpreter
                 else
                     write(*,'(A)') "Error: div requires exactly 3 tokens: name|lhs|rhs"
                 end if
+            case ("mark")
+                if (ntok == 1) then
+                    call setMarker(lineNumber, trim(tokens(1)))
+                else
+                    write(*,*) "Error: mark requires exactly 1 token (name)"
+                end if
+            case ("go")
+                if (ntok == 1) then
+                    lineInt = getMarker(trim(tokens(1)))
+                    if (lineInt > 0) then
+                        rewind(1)
+                        lineNumber = 0
+                        do while (lineNumber < lineInt)
+                            read(1,'(A)',iostat=ios) line
+                            if (ios /= 0) exit
+                            lineNumber = lineNumber + 1
+                        end do
+                    else
+                        write(*,*) "Error: marker not found: ", trim(tokens(1))
+                    end if
+                else
+                    write(*,*) "Error: go requires exactly 1 token (name)"
+                end if
+
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
@@ -212,7 +246,7 @@ program interpreter
 
     contains 
 
-    subroutine extendArray(arr, newSize)
+    subroutine extendArrayVar(arr, newSize)
         type(Var), allocatable, intent(inout) :: arr(:)
         integer, intent(in) :: newSize
         type(Var), allocatable :: tmp(:)
@@ -220,7 +254,17 @@ program interpreter
         allocate(tmp(newSize))
         if (size(arr) > 0) tmp(1:size(arr)) = arr
         call move_alloc(tmp, arr)
-    end subroutine extendArray
+    end subroutine extendArrayVar
+
+        subroutine extendArrayMark(arr, newSize)
+        type(Marker), allocatable, intent(inout) :: arr(:)
+        integer, intent(in) :: newSize
+        type(Marker), allocatable :: tmp(:)
+
+        allocate(tmp(newSize))
+        if (size(arr) > 0) tmp(1:size(arr)) = arr
+        call move_alloc(tmp, arr)
+    end subroutine extendArrayMark
 
 
     subroutine setVar(name, value)
@@ -235,11 +279,27 @@ program interpreter
         end do
 
         VarCount = VarCount + 1
-        call extendArray(Vars, VarCount)
+        call extendArrayVar(Vars, VarCount)
         Vars(VarCount)%name = trim(name)
         Vars(VarCount)%value = trim(value)
     end subroutine setVar
+    subroutine setMarker(position, name)
+        character(len=*), intent(in) :: name
+        integer, intent(in) :: position
+        integer :: i
 
+        do i = 1, MarkerCount
+            if (trim(Markers(i)%name) == trim(name)) then
+                Markers(i)%pos = position
+                return
+            end if
+        end do
+        MarkerCount = MarkerCount + 1
+        call extendArrayMark(Markers, MarkerCount)
+        Markers(MarkerCount)%pos = position
+        Markers(MarkerCount)%name = trim(name)
+
+    end subroutine setMarker
 
     subroutine split(input, delimiter, tokens, count)
         character(len=*), intent(in) :: input
@@ -281,6 +341,19 @@ program interpreter
             end if
         end do
     end function
+    function getMarker(name) result(pos)
+        character(len=*), intent(in) :: name
+        integer :: pos, i
+
+        pos = -1
+        do i = 1, MarkerCount
+            if (trim(Markers(i)%name) == trim(name)) then
+                pos = Markers(i)%pos
+                return
+            end if
+        end do
+    end function
+
 
 
 end program interpreter

@@ -1,12 +1,7 @@
+color#/blue/#
 spew#/ Hello /#
-spew#/ How are you doing? /#
-create#/x|10/#
-create#/y|20/#
-add#/z|x|y/#
-spew#/z/#
-sub#/z|z|10/#
-spew#/z/#
-mult#/mult|10|z/#
-spew#/mult/#
-div#/divTest|10|3/#
-spew#/divTest/#
+create#/x|0/#
+mark#/Recurse/#
+add#/x|x|10/#
+spew#/x/#
+go#/Recurse/#
