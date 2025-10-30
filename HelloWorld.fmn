@@ -4,4 +4,12 @@ create#/x|0/#
 mark#/Recurse/#
 add#/x|x|10/#
 spew#/x/#
-go#/Recurse/#
+go#/Recurse2/#
+mark#/Recurse2/#
+add#/x|x|10/#
+spew#/x/#
+go#/Recurse3/#
+mark#/Recurse3/#
+add#/x|x|10/#
+spew#/x/#
+bye

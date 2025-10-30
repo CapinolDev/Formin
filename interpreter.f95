@@ -46,6 +46,25 @@ program interpreter
         write(*,'(A)') "Error opening file!"
         stop
     end if
+    do
+        read(1, '(A)', iostat=ios) line
+        if (ios /= 0) exit
+        lineNumber = lineNumber + 1
+
+        pos1 = index(line, '#/')
+        pos2 = index(line, '/#')
+        if (pos1 > 0 .and. pos2 > pos1) then
+            command = adjustl(trim(line(1:pos1-1)))
+            value   = adjustl(trim(line(pos1+2:pos2-1)))
+            call split(value, "|", tokens, ntok)
+            if (trim(command) == 'mark' .and. ntok == 1) then
+                call setMarker(lineNumber, trim(tokens(1)))
+            end if
+        end if
+    end do
+
+    rewind(1)
+    lineNumber = 0
 
     do
         read(1, '(A)', iostat=ios) line
