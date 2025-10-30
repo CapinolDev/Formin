@@ -1,9 +1,8 @@
 color#/blue/#
 spew#/ Hello /#
 color#/green/#
-create#/x|6/#
-ifgo#/x|is|6|isSix/#
-ifgo#/x|isnt|6|isntSix/#
+create#/x|46/#
+ifgo#/x|is|6|isSix|isntSix/#
 bye
 
 mark#/isSix/#

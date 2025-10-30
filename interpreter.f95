@@ -255,7 +255,7 @@ program interpreter
                     write(*,*) "Error: go requires exactly 1 token (name)"
                 end if
             case("ifgo")
-                if (ntok == 4) then
+                if (ntok == 5) then
                     if (any(trim(tokens(1)) == Vars(:)%name)) then
                         s1 = trim(getVar(trim(tokens(1))))
                     else
@@ -279,7 +279,24 @@ program interpreter
                                     lineNumber = lineNumber + 1
                                 end do
                             else
-                                write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        else
+                            lineInt = getMarker(trim(tokens(5)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
                             end if
                         end if
                     else if(trim(tokens(2)) == 'isnt') then
@@ -294,14 +311,31 @@ program interpreter
                                     lineNumber = lineNumber + 1
                                 end do
                             else
-                                write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        else 
+                            lineInt = getMarker(trim(tokens(5)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
                             end if
                         end if
                     else 
                         write(*,*) "Error: comparison should either be is or isnt"
                     end if
                 else
-                    write(*,*) "Error: ifgo requires 4 tokens (var1|comparison|var2|marker)"
+                    write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker (goes if not true))"
                 end if
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
