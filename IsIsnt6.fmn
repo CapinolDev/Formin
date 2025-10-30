@@ -8,10 +8,11 @@ mark#/isSix/#
 clear#//#
 color#/green/#
 spew#/It's six./#
+
 bye
 
 mark#/isntSix/#
-clear#//#
+clear#/ /#
 color#/red/#
 spew#/It's not six./#
 bye

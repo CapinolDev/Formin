@@ -15,7 +15,7 @@ program interpreter
     integer :: lineInt
     integer :: lineNumber
     character (len=1024) :: osSeperator
-    character (len=4) :: osClear
+    character (len=5) :: osClear
 
     type :: Var
         character(len=32) :: name
@@ -93,53 +93,35 @@ program interpreter
 
             select case (command)
             case ('spew')
-            if (ntok >= 1) then
-                if (any(trim(tokens(1)) == Vars(:)%name)) then
-                    write(*,'(A)') trim(getVar(trim(tokens(1))))
-                else
-                    write(*,'(A)') trim(tokens(1))
+                if (ntok >= 1) then
+                    write(*,'(A)') trim(resolveToken(tokens(1)))
                 end if
-            end if
             case('color')
                 call set_color(tokens(1))
 
             case ("create")
                 if (ntok >= 2) then
-                    read(tokens(2), *, iostat=ios) val
-                    if (ios /= 0) then
-                        write(*,*) "Error: invalid value for variable ", trim(tokens(1))
-                    else
-                        call setVar(trim(tokens(1)), val)
-                    end if
+                    call setVar(trim(tokens(1)), resolveToken(tokens(2)))
                 else if (ntok == 1) then
                     call setVar(trim(tokens(1)), '')
                 end if
+
             case ("add")          
                 if (ntok == 3) then
-                    
-
-                    if (any(trim(tokens(2)) == Vars(:)%name)) then
-                        s1 = trim(getVar(trim(tokens(2))))
-                    else
-                        s1 = trim(tokens(2))
-                    end if
-
-                    if (any(trim(tokens(3)) == Vars(:)%name)) then
-                        s2 = trim(getVar(trim(tokens(3))))
-                    else
-                        s2 = trim(tokens(3))
-                    end if
+                    s1 = resolveToken(tokens(2))
+                    s2 = resolveToken(tokens(3))
 
                     read(s1, *, iostat=ios_local) a
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand to add is not an integer"
+                        write(*,'(A)') "Error: first operand is not an integer"
                         cycle
                     end if
                     read(s2, *, iostat=ios_local) b
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand to add is not an integer"
+                        write(*,'(A)') "Error: second operand is not an integer"
                         cycle
                     end if
+
 
                     sum = a + b
                     write(outAdd, '(I0)') sum
@@ -149,26 +131,17 @@ program interpreter
                 end if
             case ("sub")
                 if (ntok == 3) then
-                    if (any(trim(tokens(2)) == Vars(:)%name)) then
-                        s1 = trim(getVar(trim(tokens(2))))
-                    else
-                        s1 = trim(tokens(2))
-                    end if
-
-                    if (any(trim(tokens(3)) == Vars(:)%name)) then
-                        s2 = trim(getVar(trim(tokens(3))))
-                    else
-                        s2 = trim(tokens(3))
-                    end if
+                    s1 = resolveToken(tokens(2))
+                    s2 = resolveToken(tokens(3))
 
                     read(s1, *, iostat=ios_local) a
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand to sub is not an integer"
+                        write(*,'(A)') "Error: first operand is not an integer"
                         cycle
                     end if
                     read(s2, *, iostat=ios_local) b
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand subbing not an integer"
+                        write(*,'(A)') "Error: second operand is not an integer"
                         cycle
                     end if
 
@@ -180,28 +153,20 @@ program interpreter
                 end if
             case ("mult")
                 if (ntok == 3) then
-                    if (any(trim(tokens(2)) == Vars(:)%name)) then
-                        s1 = trim(getVar(trim(tokens(2))))
-                    else
-                        s1 = trim(tokens(2))
-                    end if
-
-                    if (any(trim(tokens(3)) == Vars(:)%name)) then
-                        s2 = trim(getVar(trim(tokens(3))))
-                    else
-                        s2 = trim(tokens(3))
-                    end if
+                    s1 = resolveToken(tokens(2))
+                    s2 = resolveToken(tokens(3))
 
                     read(s1, *, iostat=ios_local) a
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand multing is not an integer"
+                        write(*,'(A)') "Error: first operand is not an integer"
                         cycle
                     end if
                     read(s2, *, iostat=ios_local) b
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand multing not an integer"
+                        write(*,'(A)') "Error: second operand is not an integer"
                         cycle
                     end if
+
 
                     mult = a * b
                     write(outAdd, '(I0)') mult
@@ -211,28 +176,20 @@ program interpreter
                 end if
             case("div")
                 if (ntok == 3) then
-                    if (any(trim(tokens(2)) == Vars(:)%name)) then
-                        s1 = trim(getVar(trim(tokens(2))))
-                    else
-                        s1 = trim(tokens(2))
-                    end if
-
-                    if (any(trim(tokens(3)) == Vars(:)%name)) then
-                        s2 = trim(getVar(trim(tokens(3))))
-                    else
-                        s2 = trim(tokens(3))
-                    end if
+                   s1 = resolveToken(tokens(2))
+                    s2 = resolveToken(tokens(3))
 
                     read(s1, *, iostat=ios_local) a
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand to div is not an integer"
+                        write(*,'(A)') "Error: first operand is not an integer"
                         cycle
                     end if
                     read(s2, *, iostat=ios_local) b
                     if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand divving is not an integer"
+                        write(*,'(A)') "Error: second operand is not an integer"
                         cycle
                     end if
+
 
                     div = a / b
                     write(outAdd, '(I0)') div
@@ -265,17 +222,9 @@ program interpreter
                 end if
             case("ifgo")
                 if (ntok == 5) then
-                    if (any(trim(tokens(1)) == Vars(:)%name)) then
-                        s1 = trim(getVar(trim(tokens(1))))
-                    else
-                        s1 = trim(tokens(1))
-                    end if
+                    s1 = resolveToken(tokens(1))
+                    s2 = resolveToken(tokens(3))
 
-                    if (any(trim(tokens(3)) == Vars(:)%name)) then
-                        s2 = trim(getVar(trim(tokens(3))))
-                    else
-                        s2 = trim(tokens(3))
-                    end if
                     if (trim(tokens(2)) == 'is') then
                         if (s1 == s2) then
                             lineInt = getMarker(trim(tokens(4)))
@@ -477,7 +426,7 @@ program interpreter
                 end if
             case ("ask")
                 if (ntok==2) then
-                    write(*,*) (trim(tokens(1)))
+                    write(*,*) trim(resolveToken(tokens(1)))
                     read(*,*) tempRead
                     call setVar(trim(tokens(2)), tempRead)
                 else 
@@ -602,6 +551,27 @@ program interpreter
             end if
         end do
     end function
+    function resolveToken(tok) result(res)
+        character(len=*), intent(in) :: tok
+        character(len=256) :: res
+        character(len=256) :: trimmed
+
+        trimmed = trim(tok)
+
+        if (len_trim(trimmed) >= 2) then
+            if (trimmed(1:1) == "'" .and. trimmed(len_trim(trimmed):len_trim(trimmed)) == "'") then
+                res = trimmed(2:len_trim(trimmed)-1)  ! strip quotes
+                return
+            end if
+        end if
+
+        if (any(trimmed == Vars(:)%name)) then
+            res = getVar(trimmed)
+            return
+        end if
+
+        res = trimmed
+    end function resolveToken
 
 
 
