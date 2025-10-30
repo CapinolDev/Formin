@@ -340,8 +340,137 @@ program interpreter
                                 end if
                             end if
                         end if
+                    else if(trim(tokens(2)) == '>') then
+                        if (s1 > s2) then
+                            lineInt = getMarker(trim(tokens(4)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        else 
+                            lineInt = getMarker(trim(tokens(5)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        end if
+                    else if(trim(tokens(2)) == '<') then
+                        if (s1 < s2) then
+                            lineInt = getMarker(trim(tokens(4)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        else 
+                            lineInt = getMarker(trim(tokens(5)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        end if
+                    else if(trim(tokens(2)) == '>=') then
+                        if (s1 >= s2) then
+                            lineInt = getMarker(trim(tokens(4)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        else 
+                            lineInt = getMarker(trim(tokens(5)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        end if
+                    else if(trim(tokens(2)) == '<=') then
+                        if (s1 <= s2) then
+                            lineInt = getMarker(trim(tokens(4)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        else 
+                            lineInt = getMarker(trim(tokens(5)))
+                            if (lineInt > 0) then
+                                rewind(1)
+                                lineNumber = 0
+                                do while (lineNumber < lineInt)
+                                    read(1,'(A)',iostat=ios) line
+                                    if (ios /= 0) exit
+                                    lineNumber = lineNumber + 1
+                                end do
+                            else
+                                if (trim(tokens(5)) /= '_') then
+                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
+                                end if
+                            end if
+                        end if
+                    
                     else 
-                        write(*,*) "Error: comparison should either be is or isnt"
+                        write(*,*) "Error: comparison should either be is, isnt, >, <, >=, <="
                     end if
                 else
                     write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker (goes if not true))"

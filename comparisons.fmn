@@ -1,0 +1,34 @@
+ask#/Enter first number|x/#
+ask#/Enter second number|y/#
+ifgo#/x|is|y|1|_/#
+ifgo#/x|isnt|y|2|_/#
+ifgo#/x|>|y|3|_/#
+ifgo#/x|<|y|4|_/#
+ifgo#/x|>=|y|5|_/#
+ifgo#/x|<=|y|6|_/#
+bye
+
+
+mark#/1/#
+spew#/x is y/#
+bye
+
+mark#/2/#
+spew#/x isnt y/#
+bye
+
+mark#/3/#
+spew #/x > y/#
+bye
+
+mark#/4/#
+spew #/x < y/#
+bye
+
+mark#/5/#
+spew #/x >= y/#
+bye
+
+mark#/6/#
+spew #/x <= y/#
+bye

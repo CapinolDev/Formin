@@ -1,0 +1,83 @@
+spew#/Welcome to the calculator!/#
+mark#/start/#
+spew#/Select mode/#
+spew#/1. Add/#
+spew#/2. Substract/#
+spew#/3. Multiply/#
+spew#/4. Divide/#
+ask#/|choice/#
+ifgo#/choice|is|1|addOpt|_/#
+ifgo#/choice|is|2|subOpt|_/#
+ifgo#/choice|is|3|multOpt|_/#
+ifgo#/choice|is|4|divOpt|_/#
+color#/red/#
+clear#//#
+spew#/Error: choice must be an int between 1 and 4/#
+color#/reset/#
+go#/start/#
+bye
+
+mark#/addOpt/#
+color#/green/#
+clear#//#
+spew#/Selected addition/#
+color#/reset/#
+ask#/Input first number|x/#
+ask#/Input second number|y/#
+add#/result|x|y/#
+color#/green/#
+spew#/Result is:/#
+color#/blue/#
+spew#/result/#
+bye
+
+mark#/subOpt/#
+color#/green/#
+clear#//#
+spew#/Selected substraction/#
+color#/reset/#
+ask#/Input first number|x/#
+ask#/Input second number|y/#
+sub#/result|x|y/#
+color#/green/#
+spew#/Result is:/#
+color#/blue/#
+spew#/result/#
+bye
+
+mark#/multOpt/#
+color#/green/#
+clear#//#
+spew#/Selected multiplication/#
+color#/reset/#
+ask#/Input first number|x/#
+ask#/Input second number|y/#
+mult#/result|x|y/#
+color#/green/#
+spew#/Result is:/#
+color#/blue/#
+spew#/result/#
+bye
+
+mark#/divOpt/#
+color#/green/#
+clear#//#
+spew#/Selected division/#
+color#/reset/#
+ask#/Input first number|x/#
+ask#/Input second number|y/#
+go#/divCheck0/#
+mark#/afterCheck/#
+div#/result|x|y/#
+color#/green/#
+spew#/Result is:/#
+color#/blue/#
+spew#/result/#
+bye
+
+mark#/divCheck0/#
+ifgo#/y|is|0|error|afterCheck/#
+
+mark#/error/#
+color#/red/#
+spew#/Error: attempted division by 0/#
