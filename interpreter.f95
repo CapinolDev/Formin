@@ -18,6 +18,7 @@ program interpreter
     integer :: lineNumber
     character (len=1024) :: osSeperator
     character (len=5) :: osClear
+    integer :: i
 
     type :: Var
         character(len=32) :: name
@@ -95,9 +96,24 @@ program interpreter
 
             select case (command)
             case ('spew')
-                if (ntok >= 1) then
-                    write(*,'(A)') trim(resolveToken(tokens(1)))
-                end if
+            if (ntok >= 1) then
+                do i = 1, ntok
+                    write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))//' '
+                end do
+                write(*,*)
+            else
+                write(*,'(A)') "Error: spew requires at least one token"
+            end if
+            case('spewmult')
+            if (ntok >= 1) then
+                do i = 1, ntok
+                    write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))
+                end do
+                write(*,*)
+            else
+                write(*,'(A)') "Error: spewmult requires at least one token"
+            end if
+
             case('color')
                 call set_color(tokens(1))
 

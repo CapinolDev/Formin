@@ -1,0 +1,3 @@
+ask#/'What is your name?'|username/#
+spew#/'Hello'|username/#
+spewmult#/'Hello'|username/#
