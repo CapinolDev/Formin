@@ -1,0 +1,11 @@
+create#/anadrome|'drawer'/#
+spew#/anadrome/#
+str#/rev|anadrome|anadrome/#
+spew#/anadrome/#
+create#/name|'AnNe'/#
+str#/low|name|name/#
+spew#/name/#
+str#/up|name|name/#
+spew#/name/#
+str#/cat|catted|anadrome|name|sp/#
+spew#/catted/#

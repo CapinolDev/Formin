@@ -16,7 +16,7 @@ program interpreter
     character(len=256) :: s1, s2, tempRead
     integer :: lineInt
     integer :: lineNumber
-    character (len=1024) :: osSeperator
+    character (len=1024) :: osSeperator, strSave
     character (len=5) :: osClear
     integer :: i
     integer, allocatable :: goStack(:)
@@ -262,9 +262,60 @@ program interpreter
                         lineNumber = lineNumber + 1
                     end do
                 else
-                    write(*,*) "Error: no previous go to return to"
+                    !write(*,*) "Error: no previous go to return to"
                 end if
+            case("str")
+                select case(trim(tokens(1)))
 
+                case("cat")
+                    if (ntok >= 4) then
+                        s1 = resolveToken(tokens(3))
+                        s2 = resolveToken(tokens(4))
+                        strSave = ''
+
+                        if (ntok == 5) then
+                            if (trim(lower(tokens(5))) == 'sp') then
+                                strSave = trim(s1) // ' ' // trim(s2)
+                            else
+                                strSave = trim(s1) // trim(s2)
+                            end if
+                        else
+                            strSave = trim(s1) // trim(s2)
+                        end if
+
+                        call setVar(trim(tokens(2)), trim(strSave), 'str')
+                    else
+                        write(*,*) "Error: cat requires at least 3 tokens: var|string1|string2|[space]"
+                    end if
+                case("rev")
+                    if(ntok==3) then
+                        s1 = resolveToken(tokens(3))
+                        strSave = ''
+                        strSave = trim(reverse(trim(s1)))
+                        call setVar(trim(tokens(2)),trim(strSave))
+                    else
+                        write(*,*) "Error: rev requires 2 tokens: var|string"
+                    end if
+                case("low")
+                    if(ntok==3) then
+                        s1 = resolveToken(tokens(3))
+                        strSave = ''
+                        strSave = trim(lower(trim(s1)))
+                        call setVar(trim(tokens(2)),trim(strSave))
+                    else
+                        write(*,*) "Error: low requires 2 tokens: var|string"
+                    end if
+                case("up")
+                    if(ntok==3) then
+                        s1 = resolveToken(tokens(3))
+                        strSave = ''
+                        strSave = trim(upper(trim(s1)))
+                        call setVar(trim(tokens(2)),trim(strSave))
+                    else
+                        write(*,*) "Error: up requires 2 tokens: var|string"
+                    end if
+                
+                end select
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
@@ -626,5 +677,39 @@ contains
             goDepth = goDepth - 1
         end if
     end function popGo
+    pure function lower(str) result(out)
+        character(len=*), intent(in) :: str
+        character(len=len(str)) :: out
+        integer :: i
+        out = str
+        do i = 1, len(str)
+            select case (str(i:i))
+            case ('A':'Z')
+                out(i:i) = achar(iachar(str(i:i)) + 32)
+            end select
+        end do
+    end function lower
+    pure function reverse(str) result(out)
+        character(len=*), intent(in) :: str
+        character(len=len(str)) :: out
+        integer :: i
+        do i = 1, len(str)
+            out(i:i) = str(len(str)-i+1:len(str)-i+1)
+        end do
+    end function reverse
+
+    pure function upper(str) result(out)
+        character(len=*), intent(in) :: str
+        character(len=len(str)) :: out
+        integer :: i
+        out = str
+        do i = 1, len(str)
+            if (str(i:i) >= 'a' .and. str(i:i) <= 'z') then
+                out(i:i) = achar(iachar(str(i:i)) - 32)
+            end if
+        end do
+    end function upper
+
+
 
 end program interpreter

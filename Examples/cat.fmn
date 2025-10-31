@@ -1,0 +1,6 @@
+create#/Greeting|'Meoww!'/#
+create#/Introduction|'Im a cat!'/#
+str#/cat|message|Greeting|Introduction|sp/#
+spew#/message/#
+str#/cat|message|Greeting|Introduction/#
+spew#/message/#

@@ -42,6 +42,7 @@ spew#/greeting/#
   - [Variables](#variables)
   - [Arithmetic](#arithmetic)
   - [File Handling](#file-handling)
+  - [Strings](#strings)
 - [Related links](#related-links)
 
 ---
@@ -263,6 +264,44 @@ spew#/line/#
 close#/file/#
 ```
 ALWAYS CLOSE FILES AFTER OPENING - NOT DOING SO MAKES THE FILE PERSIST IN MEMORY EVEN AFTER CLOSING PROGRAM.
+
+### Strings
+>This section will contain all tokens of the str#//# command.
+>[str example](Examples/str.fmn) 
+
+#### str#//#
+The string command can be used to manipulate strings.
+Syntax:
+```formin
+str#/*method*|*method variables*/#
+```
+Methods:
+
+##### cat
+Syntax:
+```formim
+str#/cat|*var to store result*|*string 1*|*string 2*|*spacing*/#
+```
+by default, cat doesnt add space between the 2 strings; in order to do so,
+write sp in the spacing token.
+The spacing token can be left out.
+[Example](Examples/cat.fmn)
+
+##### rev, low, up
+Syntax: 
+```formin
+str#/*any of the 3*|*var to store result*|*string*/#
+```
+Either reverses the string and stores it to the var,
+or converts it into uppercase/lowercase and stores in the var.
+Example:
+```formin
+create#/anadrome|'drawer'/#
+spew#/anadrome/#
+str#/rev|anadrome|anadrome/#
+spew#/anadrome/#
+```
+
 
 --- 
 
