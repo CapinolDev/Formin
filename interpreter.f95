@@ -2,8 +2,8 @@ program interpreter
     use terminal_colors
     implicit none
 
-    integer :: ios, readFileName
-    integer :: nextFileUnit = 20 
+    integer :: ios
+    integer :: nextFileUnit = 20
     integer :: fileUnit
     character(len=256) :: fileName, tempLine
     character(len=256) :: line
@@ -11,7 +11,7 @@ program interpreter
     integer :: pos1, pos2
     character(len=256) :: tokens(10)
     integer :: ntok
-    character(len=256) :: outAdd 
+    character(len=256) :: outAdd
     integer :: a, b, sum, ios_local, sub, mult, div
     character(len=256) :: s1, s2, tempRead
     integer :: lineInt
@@ -22,17 +22,17 @@ program interpreter
     integer, allocatable :: goStack(:)
     integer :: goDepth = 0
 
-
     type :: Var
-        character(len=32) :: name
+        character(len=32)  :: name
         character(len=256) :: value
+        character(len=8)   :: vartype 
     end type Var
     type :: Marker
         integer :: pos
         character(len=256) :: name
     end type Marker
 
-    type(Var), allocatable :: Vars(:)
+    type(Var), allocatable    :: Vars(:)
     type(Marker), allocatable :: Markers(:)
     integer :: VarCount, MarkerCount
 
@@ -61,6 +61,7 @@ program interpreter
         write(*,'(A)') "Error opening file!"
         stop
     end if
+
     do
         read(1, '(A)', iostat=ios) line
         if (ios /= 0) exit
@@ -97,133 +98,60 @@ program interpreter
 
             call split(value, "|", tokens, ntok)
 
-            select case (command)
+            select case (trim(command))
+
             case ('spew')
-            if (ntok >= 1) then
-                do i = 1, ntok
-                    write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))//' '
-                end do
-                write(*,*)
-            else
-                write(*,'(A)') "Error: spew requires at least one token"
-            end if
+                if (ntok >= 1) then
+                    do i = 1, ntok
+                        write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))//' '
+                    end do
+                    write(*,*)
+                else
+                    write(*,'(A)') "Error: spew requires at least one token"
+                end if
+
             case('spewmult')
-            if (ntok >= 1) then
-                do i = 1, ntok
-                    write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))
-                end do
-                write(*,*)
-            else
-                write(*,'(A)') "Error: spewmult requires at least one token"
-            end if
+                if (ntok >= 1) then
+                    do i = 1, ntok
+                        write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))
+                    end do
+                    write(*,*)
+                else
+                    write(*,'(A)') "Error: spewmult requires at least one token"
+                end if
 
             case('color')
                 call set_color(tokens(1))
 
             case ("create")
                 if (ntok >= 2) then
-                    call setVar(trim(tokens(1)), resolveToken(tokens(2)))
+                    if (ntok == 3) then
+                        call setVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
+                    else
+                        call setVar(trim(tokens(1)), resolveToken(tokens(2)))
+                    end if
                 else if (ntok == 1) then
-                    call setVar(trim(tokens(1)), '')
-                end if
-
-            case ("add")          
-                if (ntok == 3) then
-                    s1 = resolveToken(tokens(2))
-                    s2 = resolveToken(tokens(3))
-
-                    read(s1, *, iostat=ios_local) a
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand is not an integer"
-                        cycle
-                    end if
-                    read(s2, *, iostat=ios_local) b
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand is not an integer"
-                        cycle
-                    end if
-
-
-                    sum = a + b
-                    write(outAdd, '(I0)') sum
-                    call setVar(trim(tokens(1)), trim(outAdd))
+                    call setVar(trim(tokens(1)), '', 'str')
                 else
-                    write(*,'(A)') "Error: add requires exactly 3 tokens: name|lhs|rhs"
+                    write(*,'(A)') "Error: create requires 1-3 tokens: name|[value]|[type]"
                 end if
+
+            case ("add")
+                call numeric_op(tokens, ntok, "+")
+
             case ("sub")
-                if (ntok == 3) then
-                    s1 = resolveToken(tokens(2))
-                    s2 = resolveToken(tokens(3))
-
-                    read(s1, *, iostat=ios_local) a
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand is not an integer"
-                        cycle
-                    end if
-                    read(s2, *, iostat=ios_local) b
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand is not an integer"
-                        cycle
-                    end if
-
-                    sub = a - b
-                    write(outAdd, '(I0)') sub
-                    call setVar(trim(tokens(1)), trim(outAdd))
-                else
-                    write(*,'(A)') "Error: sub requires exactly 3 tokens: name|lhs|rhs"
-                end if
+                call numeric_op(tokens, ntok, "-")
             case ("mult")
-                if (ntok == 3) then
-                    s1 = resolveToken(tokens(2))
-                    s2 = resolveToken(tokens(3))
-
-                    read(s1, *, iostat=ios_local) a
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand is not an integer"
-                        cycle
-                    end if
-                    read(s2, *, iostat=ios_local) b
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand is not an integer"
-                        cycle
-                    end if
-
-
-                    mult = a * b
-                    write(outAdd, '(I0)') mult
-                    call setVar(trim(tokens(1)), trim(outAdd))
-                else
-                    write(*,'(A)') "Error: mult requires exactly 3 tokens: name|lhs|rhs"
-                end if
+                call numeric_op(tokens, ntok, "*")
             case("div")
-                if (ntok == 3) then
-                   s1 = resolveToken(tokens(2))
-                    s2 = resolveToken(tokens(3))
-
-                    read(s1, *, iostat=ios_local) a
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: first operand is not an integer"
-                        cycle
-                    end if
-                    read(s2, *, iostat=ios_local) b
-                    if (ios_local /= 0) then
-                        write(*,'(A)') "Error: second operand is not an integer"
-                        cycle
-                    end if
-
-
-                    div = a / b
-                    write(outAdd, '(I0)') div
-                    call setVar(trim(tokens(1)), trim(outAdd))
-                else
-                    write(*,'(A)') "Error: div requires exactly 3 tokens: name|lhs|rhs"
-                end if
+                call numeric_op(tokens, ntok, "/")
             case ("mark")
                 if (ntok == 1) then
                     call setMarker(lineNumber, trim(tokens(1)))
                 else
                     write(*,*) "Error: mark requires exactly 1 token (name)"
                 end if
+
             case ("go")
                 if (ntok == 1) then
                     lineInt = getMarker(trim(tokens(1)))
@@ -242,231 +170,34 @@ program interpreter
                 else
                     write(*,*) "Error: go requires exactly 1 token (name)"
                 end if
+
             case("ifgo")
                 if (ntok == 5) then
                     s1 = resolveToken(tokens(1))
                     s2 = resolveToken(tokens(3))
-
-                    if (trim(tokens(2)) == 'is') then
-                        if (s1 == s2) then
-                            lineInt = getMarker(trim(tokens(4)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        else
-                            lineInt = getMarker(trim(tokens(5)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        end if
-                    else if(trim(tokens(2)) == 'isnt') then
-                        if (s1 /= s2) then
-                            lineInt = getMarker(trim(tokens(4)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        else 
-                            lineInt = getMarker(trim(tokens(5)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        end if
-                    else if(trim(tokens(2)) == '>') then
-                        if (s1 > s2) then
-                            lineInt = getMarker(trim(tokens(4)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        else 
-                            lineInt = getMarker(trim(tokens(5)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        end if
-                    else if(trim(tokens(2)) == '<') then
-                        if (s1 < s2) then
-                            lineInt = getMarker(trim(tokens(4)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        else 
-                            lineInt = getMarker(trim(tokens(5)))
-                            if (lineInt > 0) then
-                                call pushGo(lineNumber)
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        end if
-                    else if(trim(tokens(2)) == '>=') then
-                        if (s1 >= s2) then
-                            lineInt = getMarker(trim(tokens(4)))
-                            if (lineInt > 0) then
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        else 
-                            lineInt = getMarker(trim(tokens(5)))
-                            if (lineInt > 0) then
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        end if
-                    else if(trim(tokens(2)) == '<=') then
-                        if (s1 <= s2) then
-                            lineInt = getMarker(trim(tokens(4)))
-                            if (lineInt > 0) then
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        else 
-                            lineInt = getMarker(trim(tokens(5)))
-                            if (lineInt > 0) then
-                                rewind(1)
-                                lineNumber = 0
-                                do while (lineNumber < lineInt)
-                                    read(1,'(A)',iostat=ios) line
-                                    if (ios /= 0) exit
-                                    lineNumber = lineNumber + 1
-                                end do
-                            else
-                                if (trim(tokens(5)) /= '_') then
-                                    write(*,*) "Error: marker not found: ", trim(tokens(1))
-                                end if
-                            end if
-                        end if
-                    
-                    else 
-                        write(*,*) "Error: comparison should either be is, isnt, >, <, >=, <="
+                    if (cmp_values(s1, s2, trim(tokens(2)))) then
+                        call jump_to(tokens(4))
+                    else
+                        call jump_to(tokens(5))
                     end if
                 else
-                    write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker (goes if not true))"
+                    write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker)"
                 end if
+
             case ("ask")
                 if (ntok==2) then
                     write(*,*) trim(resolveToken(tokens(1)))
                     read(*,*) tempRead
-                    call setVar(trim(tokens(2)), tempRead)
-                else 
+                    call setVar(trim(tokens(2)), trim(tempRead))
+                else
                     print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
                 end if
+
             case("clear")
                 call system(osClear)
+
             case ("open")
                 if (ntok == 2) then
-                    
                     s1 = trim(tokens(1))
                     s2 = resolveToken(tokens(2))
 
@@ -476,40 +207,37 @@ program interpreter
                     open(unit=fileUnit, file=s2, status='old', action='read', iostat=ios)
                     if (ios /= 0) then
                         write(*,*) "Error: cannot open file ", trim(s2)
-                        cycle  
+                        cycle
                     else
-                        call setVar(s1, trim(toString(fileUnit)))
+                        call setVar(s1, trim(toString(fileUnit)), 'int')
                     end if
                 else
                     write(*,*) "Error: open requires 2 tokens: handleName|filePath"
                 end if
 
-
             case ("read")
-            if (ntok == 2) then
-                s1 = resolveToken(tokens(1)) 
-                s2 = trim(tokens(2))
+                if (ntok == 2) then
+                    s1 = resolveToken(tokens(1))
+                    s2 = trim(tokens(2))
 
-                read(s1, *, iostat=ios_local) fileUnit
-                if (ios_local /= 0) then
-                    write(*,*) "Error: invalid file handle variable"
-                    cycle
-                end if
-                read(fileUnit, '(A)', iostat=ios_local) tempLine
-                if (ios_local /= 0) then
-                    call setVar(trim(s2), "")  
+                    read(s1, *, iostat=ios_local) fileUnit
+                    if (ios_local /= 0) then
+                        write(*,*) "Error: invalid file handle variable"
+                        cycle
+                    end if
+                    read(fileUnit, '(A)', iostat=ios_local) tempLine
+                    if (ios_local /= 0) then
+                        call setVar(trim(s2), "", 'str')
+                    else
+                        call setVar(trim(s2), trim(tempLine), 'str')
+                    end if
                 else
-                    call setVar(trim(s2), trim(tempLine))
+                    write(*,*) "Error: read requires 2 tokens: handleName|lineVar"
                 end if
-            else
-                write(*,*) "Error: read requires 2 tokens: handleName|lineVar"
-            end if
-
 
             case ("close")
                 if (ntok == 1) then
                     s1 = resolveToken(tokens(1))
-
                     read(s1, *, iostat=ios_local) fileUnit
                     if (ios_local /= 0) then
                         write(*,*) "Error: invalid file handle variable"
@@ -522,6 +250,7 @@ program interpreter
                 else
                     write(*,*) "Error: close requires 1 token: handleName"
                 end if
+
             case("goback")
                 lineInt = popGo()
                 if (lineInt > 0) then
@@ -535,7 +264,7 @@ program interpreter
                 else
                     write(*,*) "Error: no previous go to return to"
                 end if
- 
+
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
@@ -544,14 +273,83 @@ program interpreter
 
     close(1)
 
-    contains 
+contains
+
+        subroutine numeric_op(tokens, ntok, op)
+            character(len=*), intent(in) :: tokens(:)
+            integer, intent(in) :: ntok
+            character(len=*), intent(in) :: op
+            character(len=256) :: lhs, rhs, resultStr
+            real(kind=8) :: a, b, res
+            integer :: ios1, ios2
+            logical :: intA, intB, anyFloat
+
+            if (ntok /= 3) then
+                write(*,'(A)') "Error: arithmetic requires 3 tokens: name|lhs|rhs"
+                return
+            end if
+
+            lhs = resolveToken(tokens(2))
+            rhs = resolveToken(tokens(3))
+
+            read(lhs, *, iostat=ios1) a
+            read(rhs, *, iostat=ios2) b
+
+            if (ios1 /= 0 .or. ios2 /= 0) then
+                write(*,'(A)') "Error: non-numeric operands"
+                return
+            end if
+
+            intA = (index(lhs, ".") == 0)
+            intB = (index(rhs, ".") == 0)
+            anyFloat = .not.(intA .and. intB)
+
+            select case (op)
+            case ("+"); res = a + b
+            case ("-"); res = a - b
+            case ("*"); res = a * b
+            case ("/")
+                if (b == 0.0d0) then
+                    write(*,'(A)') "Error: division by zero"
+                    return
+                end if
+                res = a / b
+            end select
+
+            if (anyFloat) then
+                write(resultStr, '(F15.8)') res
+                call setVar(trim(tokens(1)), adjustl(trim(resultStr)), 'float')
+            else
+                write(resultStr, '(I0)') int(res)
+                call setVar(trim(tokens(1)), adjustl(trim(resultStr)), 'int')
+            end if
+        end subroutine numeric_op
+
+
+    subroutine jump_to(tokMarker)
+        character(len=*), intent(in) :: tokMarker
+        integer :: tgt
+        if (trim(tokMarker) == '_') return
+        tgt = getMarker(trim(tokMarker))
+        if (tgt > 0) then
+            call pushGo(lineNumber)
+            rewind(1)
+            lineNumber = 0
+            do while (lineNumber < tgt)
+                read(1,'(A)',iostat=ios) line
+                if (ios /= 0) exit
+                lineNumber = lineNumber + 1
+            end do
+        else
+            write(*,*) "Error: marker not found: ", trim(tokMarker)
+        end if
+    end subroutine jump_to
 
     function toString(i) result(s)
         integer, intent(in) :: i
         character(len=256) :: s
         write(s, '(I0)') i
     end function toString
-
 
     subroutine extendArrayVar(arr, newSize)
         type(Var), allocatable, intent(inout) :: arr(:)
@@ -563,7 +361,7 @@ program interpreter
         call move_alloc(tmp, arr)
     end subroutine extendArrayVar
 
-        subroutine extendArrayMark(arr, newSize)
+    subroutine extendArrayMark(arr, newSize)
         type(Marker), allocatable, intent(inout) :: arr(:)
         integer, intent(in) :: newSize
         type(Marker), allocatable :: tmp(:)
@@ -573,23 +371,73 @@ program interpreter
         call move_alloc(tmp, arr)
     end subroutine extendArrayMark
 
-
-    subroutine setVar(name, value)
+    subroutine setVar(name, value, vartype)
         character(len=*), intent(in) :: name, value
-        integer :: i
+        character(len=*), intent(in), optional :: vartype
+        integer :: i, ios_num
+        real(kind=8) :: tempReal
+        integer :: tempInt
+        character(len=8) :: typeToSet
+
+        if (present(vartype)) then
+            typeToSet = adjustl(trim(vartype))
+        else
+            read(value, *, iostat=ios_num) tempInt
+            if (ios_num == 0) then
+                typeToSet = 'int'
+            else
+                read(value, *, iostat=ios_num) tempReal
+                if (ios_num == 0) then
+                    typeToSet = 'float'
+                else
+                    typeToSet = 'str'
+                end if
+            end if
+        end if
 
         do i = 1, VarCount
             if (trim(Vars(i)%name) == trim(name)) then
-                Vars(i)%value = value
+                Vars(i)%value   = trim(value)
+                Vars(i)%vartype = trim(typeToSet)
                 return
             end if
         end do
 
         VarCount = VarCount + 1
         call extendArrayVar(Vars, VarCount)
-        Vars(VarCount)%name = trim(name)
-        Vars(VarCount)%value = trim(value)
+        Vars(VarCount)%name    = trim(name)
+        Vars(VarCount)%value   = trim(value)
+        Vars(VarCount)%vartype = trim(typeToSet)
     end subroutine setVar
+
+    function getVar(name) result(val)
+        character(len=*), intent(in) :: name
+        character(len=256) :: val
+        integer :: i
+
+        val = "undefined"
+        do i = 1, VarCount
+            if (trim(Vars(i)%name) == trim(name)) then
+                val = Vars(i)%value
+                return
+            end if
+        end do
+    end function getVar
+
+    function getVarType(name) result(vtype)
+        character(len=*), intent(in) :: name
+        character(len=8) :: vtype
+        integer :: i
+
+        vtype = "undefined"
+        do i = 1, VarCount
+            if (trim(Vars(i)%name) == trim(name)) then
+                vtype = Vars(i)%vartype
+                return
+            end if
+        end do
+    end function getVarType
+
     subroutine setMarker(position, name)
         character(len=*), intent(in) :: name
         integer, intent(in) :: position
@@ -605,7 +453,6 @@ program interpreter
         call extendArrayMark(Markers, MarkerCount)
         Markers(MarkerCount)%pos = position
         Markers(MarkerCount)%name = trim(name)
-
     end subroutine setMarker
 
     subroutine split(input, delimiter, tokens, count)
@@ -633,21 +480,8 @@ program interpreter
                 start = start + pos + lenDelim - 1
             end if
         end do
-    end subroutine
+    end subroutine split
 
-    function getVar(name) result(val)
-        character(len=*), intent(in) :: name
-        character(len=256) :: val
-        integer :: i
-
-        val = "undefined"
-        do i = 1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                val = Vars(i)%value
-                return
-            end if
-        end do
-    end function
     function getMarker(name) result(pos)
         character(len=*), intent(in) :: name
         integer :: pos, i
@@ -659,11 +493,13 @@ program interpreter
                 return
             end if
         end do
-    end function
+    end function getMarker
+
     function resolveToken(tok) result(res)
         character(len=*), intent(in) :: tok
         character(len=256) :: res
         character(len=256) :: trimmed
+        integer :: i
 
         trimmed = trim(tok)
 
@@ -674,13 +510,72 @@ program interpreter
             end if
         end if
 
-        if (any(trimmed == Vars(:)%name)) then
-            res = getVar(trimmed)
-            return
-        end if
+        do i = 1, VarCount
+            if (trimmed == trim(Vars(i)%name)) then
+                res = Vars(i)%value
+                return
+            end if
+        end do
 
         res = trimmed
     end function resolveToken
+
+    logical function try_parse_real(s, x)
+        character(len=*), intent(in) :: s
+        real(kind=8),    intent(out) :: x
+        integer :: iosn
+        read(s, *, iostat=iosn) x
+        try_parse_real = (iosn == 0)
+    end function try_parse_real
+
+    logical function cmp_values(sleft, sright, op)
+        character(len=*), intent(in) :: sleft, sright, op
+        real(kind=8) :: a, b, eps
+        logical :: left_num, right_num
+        character(len=16) :: cop
+
+        eps = 1.0d-9
+        cop = adjustl(trim(op))
+
+        left_num  = try_parse_real(trim(sleft),  a)
+        right_num = try_parse_real(trim(sright), b)
+
+        if (left_num .and. right_num) then
+            select case (cop)
+            case ('is')
+                cmp_values = (abs(a - b) <= eps)
+            case ('isnt')
+                cmp_values = (abs(a - b) > eps)
+            case ('>')
+                cmp_values = (a > b + eps)
+            case ('<')
+                cmp_values = (a < b - eps)
+            case ('>=')
+                cmp_values = (a > b - eps)
+            case ('<=')
+                cmp_values = (a < b + eps)
+            case default
+                cmp_values = .false.
+            end select
+        else
+            select case (cop)
+            case ('is')
+                cmp_values = (trim(sleft) == trim(sright))
+            case ('isnt')
+                cmp_values = (trim(sleft) /= trim(sright))
+            case ('>')
+                cmp_values = (trim(sleft) >  trim(sright))
+            case ('<')
+                cmp_values = (trim(sleft) <  trim(sright))
+            case ('>=')
+                cmp_values = (trim(sleft) >= trim(sright))
+            case ('<=')
+                cmp_values = (trim(sleft) <= trim(sright))
+            case default
+                cmp_values = .false.
+            end select
+        end if
+    end function cmp_values
 
     subroutine pushGo(pos)
         integer, intent(in) :: pos
@@ -701,7 +596,6 @@ program interpreter
             deallocate(tmp)
         end if
     end subroutine pushGo
-
 
     function popGo() result(pos)
         integer :: pos

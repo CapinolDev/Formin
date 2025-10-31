@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.2
+**Version:** 1.0.3
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -168,7 +168,8 @@ goback#//#
 
 #### create#//#
 makes / sets a variable to a value.
-Example: ``` create#/x|10/# ```
+Has 3 types: int, real, string
+Example: ``` create#/x|10|int/# ```
 
 #### ask#//#
 Asks the user a question, and stores it in a variable
