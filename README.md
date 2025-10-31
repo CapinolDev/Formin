@@ -301,6 +301,13 @@ spew#/anadrome/#
 str#/rev|anadrome|anadrome/#
 spew#/anadrome/#
 ```
+#### Summary of string functions
+| Function | Description | Example |
+|-----------|--------------|----------|
+| `str#/cat|a|'hi'|'there'|sp/#` | Concatenate | `hi there` |
+| `str#/rev|a|'drawer'/#` | Reverse | `reward` |
+| `str#/low|a|'HELLO'/#` | Lowercase | `hello` |
+| `str#/up|a|'hello'/#` | Uppercase | `HELLO` |
 
 
 --- 
