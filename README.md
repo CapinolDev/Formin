@@ -30,9 +30,9 @@ spew#/greeting/#
 
 - [Overview](#overview)
 - [Installation](#installation)
-    -[Linux/MacOS](#linux---macos)
-    -[Windows](#windows-using-powershell-or-cmd)
-    -[Licenses](#license)
+    - [Linux/MacOS](#linux---macos)
+    - [Windows](#windows-using-powershell-or-cmd)
+    - [Licenses](#license)
 - [Commands](#commands)
   - [Format](#format)
   - [Execution](#execution)
