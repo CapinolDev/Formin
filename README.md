@@ -33,12 +33,15 @@ spew#/greeting/#
     - [Linux/MacOS](#linux---macos)
     - [Windows](#windows-using-powershell-or-cmd)
     - [Licenses](#license)
+- [Quick start](#quick-start)
+- [Examples](#examples)
 - [Commands](#commands)
   - [Format](#format)
   - [Execution](#execution)
   - [Variables](#variables)
   - [Arithmetic](#arithmetic)
   - [File Handling](#file-handling)
+- [Related links](#related-links)
 
 ---
 
@@ -70,6 +73,29 @@ formin examples/hello.formin
     .\formin examples\hello.formin
 ```
 If Windows blocks the binary, right-click → Properties → check Unblock, or run PowerShell as Administrator.
+
+---
+## Quick Start
+
+1. Create a new file called `hello.fmn`:
+   ```formin
+   create#/name|'World'/#
+   spew#/'Hello,'|name|!/#
+2. Run it
+    ```bash
+   formin hello.fmn
+Output:
+    ```Hello, World! ```
+
+###
+
+---
+
+## Examples
+- [Hello World](Examples/helloWorld.fmn)
+- [Simple calculator](Examples/simpleCalc.fmn)
+- [Greet user](Examples/userGreet.fmn)
+---
 
 ### License
 Formin binaries are provided under the MIT License.
@@ -218,17 +244,8 @@ close#/file/#
 ```
 ALWAYS CLOSE FILES AFTER OPENING - NOT DOING SO MAKES THE FILE PERSIST IN MEMORY EVEN AFTER CLOSING PROGRAM.
 
+--- 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+## Related Links
+- [Formin on Esolangs.org](https://esolangs.org/wiki/Formin)
+- [Interpreter Source (Fortran)](interpreter.f95)
