@@ -146,6 +146,24 @@ go#/loop/#
 goes to a marker.
 Example: in mark#//#
 
+#### goback#//#
+goes back to the last go#//# call
+Example: (prints 1,2,3)
+```formin
+spew#/'1'/#
+go#/print2/#
+go#/print3/#
+bye
+
+mark#/print2/#
+spew#/'2'/#
+goback#//#
+
+mark#/print3/#
+spew#/'3'/#
+goback#//#
+```
+
 ### Variables
 
 #### create#//#

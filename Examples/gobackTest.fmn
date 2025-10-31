@@ -1,0 +1,12 @@
+spew#/'1'/#
+go#/print2/#
+go#/print3/#
+bye
+
+mark#/print2/#
+spew#/'2'/#
+goback#//#
+
+mark#/print3/#
+spew#/'3'/#
+goback#//#

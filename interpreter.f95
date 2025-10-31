@@ -19,6 +19,9 @@ program interpreter
     character (len=1024) :: osSeperator
     character (len=5) :: osClear
     integer :: i
+    integer, allocatable :: goStack(:)
+    integer :: goDepth = 0
+
 
     type :: Var
         character(len=32) :: name
@@ -225,6 +228,7 @@ program interpreter
                 if (ntok == 1) then
                     lineInt = getMarker(trim(tokens(1)))
                     if (lineInt > 0) then
+                        call pushGo(lineNumber)
                         rewind(1)
                         lineNumber = 0
                         do while (lineNumber < lineInt)
@@ -247,6 +251,7 @@ program interpreter
                         if (s1 == s2) then
                             lineInt = getMarker(trim(tokens(4)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -262,6 +267,7 @@ program interpreter
                         else
                             lineInt = getMarker(trim(tokens(5)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -279,6 +285,7 @@ program interpreter
                         if (s1 /= s2) then
                             lineInt = getMarker(trim(tokens(4)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -294,6 +301,7 @@ program interpreter
                         else 
                             lineInt = getMarker(trim(tokens(5)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -311,6 +319,7 @@ program interpreter
                         if (s1 > s2) then
                             lineInt = getMarker(trim(tokens(4)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -326,6 +335,7 @@ program interpreter
                         else 
                             lineInt = getMarker(trim(tokens(5)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -343,6 +353,7 @@ program interpreter
                         if (s1 < s2) then
                             lineInt = getMarker(trim(tokens(4)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -358,6 +369,7 @@ program interpreter
                         else 
                             lineInt = getMarker(trim(tokens(5)))
                             if (lineInt > 0) then
+                                call pushGo(lineNumber)
                                 rewind(1)
                                 lineNumber = 0
                                 do while (lineNumber < lineInt)
@@ -510,7 +522,20 @@ program interpreter
                 else
                     write(*,*) "Error: close requires 1 token: handleName"
                 end if
-
+            case("goback")
+                lineInt = popGo()
+                if (lineInt > 0) then
+                    rewind(1)
+                    lineNumber = 0
+                    do while (lineNumber < lineInt)
+                        read(1,'(A)',iostat=ios) line
+                        if (ios /= 0) exit
+                        lineNumber = lineNumber + 1
+                    end do
+                else
+                    write(*,*) "Error: no previous go to return to"
+                end if
+ 
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
@@ -644,7 +669,7 @@ program interpreter
 
         if (len_trim(trimmed) >= 2) then
             if (trimmed(1:1) == "'" .and. trimmed(len_trim(trimmed):len_trim(trimmed)) == "'") then
-                res = trimmed(2:len_trim(trimmed)-1)  ! strip quotes
+                res = trimmed(2:len_trim(trimmed)-1)
                 return
             end if
         end if
@@ -657,6 +682,55 @@ program interpreter
         res = trimmed
     end function resolveToken
 
+    subroutine pushGo(pos)
+        integer, intent(in) :: pos
+        integer, allocatable :: tmp(:)
 
+        if (.not.allocated(goStack)) then
+            allocate(goStack(1))
+            goStack(1) = pos
+            goDepth = 1
+        else
+            allocate(tmp(goDepth))
+            tmp = goStack
+            deallocate(goStack)
+            allocate(goStack(goDepth + 1))
+            goStack(1:goDepth) = tmp
+            goStack(goDepth + 1) = pos
+            goDepth = goDepth + 1
+            deallocate(tmp)
+        end if
+    end subroutine pushGo
+
+
+    function popGo() result(pos)
+        integer :: pos
+        integer, allocatable :: tmp(:)
+
+        if (.not.allocated(goStack)) then
+            pos = -1
+            return
+        end if
+
+        if (goDepth <= 0) then
+            pos = -1
+            return
+        end if
+
+        pos = goStack(goDepth)
+
+        if (goDepth == 1) then
+            deallocate(goStack)
+            goDepth = 0
+        else
+            allocate(tmp(goDepth - 1))
+            tmp = goStack(1:goDepth - 1)
+            deallocate(goStack)
+            allocate(goStack(goDepth - 1))
+            goStack = tmp
+            deallocate(tmp)
+            goDepth = goDepth - 1
+        end if
+    end function popGo
 
 end program interpreter
