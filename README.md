@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.3
+**Version:** 1.0.4
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -301,13 +301,7 @@ spew#/anadrome/#
 str#/rev|anadrome|anadrome/#
 spew#/anadrome/#
 ```
-#### Summary of string functions
-| Function | Description | Example |
-|-----------|--------------|----------|
-| `str#/cat|a|'hi'|'there'|sp/#` | Concatenate | `hi there` |
-| `str#/rev|a|'drawer'/#` | Reverse | `reward` |
-| `str#/low|a|'HELLO'/#` | Lowercase | `hello` |
-| `str#/up|a|'hello'/#` | Uppercase | `HELLO` |
+
 
 
 --- 
