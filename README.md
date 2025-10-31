@@ -1,6 +1,7 @@
 ![Formin logo](./Icons/Formin-logo.svg)
 
-# Formin Language Syntax Reference
+# Formin Language 
+> A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
 **Version:** 1.0.1  
 **Author:** Capinol  
