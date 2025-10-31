@@ -1,0 +1,9 @@
+open#/test|Examples/hello.txt/#
+mark#/start/#
+read#/test|line/#
+ifgo#/line|is|''|end|_/#
+spew#/line/#
+go#/start/#
+mark#/end/#
+close#/test/#
+bye

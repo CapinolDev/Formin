@@ -2,8 +2,10 @@ program interpreter
     use terminal_colors
     implicit none
 
-    integer :: ios
-    character(len=256) :: fileName
+    integer :: ios, readFileName
+    integer :: nextFileUnit = 20 
+    integer :: fileUnit
+    character(len=256) :: fileName, tempLine
     character(len=256) :: line
     character(len=256) :: command, value, val
     integer :: pos1, pos2
@@ -434,6 +436,65 @@ program interpreter
                 end if
             case("clear")
                 call system(osClear)
+            case ("open")
+                if (ntok == 2) then
+                    
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+
+                    fileUnit = nextFileUnit
+                    nextFileUnit = nextFileUnit + 1
+
+                    open(unit=fileUnit, file=s2, status='old', action='read', iostat=ios)
+                    if (ios /= 0) then
+                        write(*,*) "Error: cannot open file ", trim(s2)
+                        cycle  
+                    else
+                        call setVar(s1, trim(toString(fileUnit)))
+                    end if
+                else
+                    write(*,*) "Error: open requires 2 tokens: handleName|filePath"
+                end if
+
+
+            case ("read")
+            if (ntok == 2) then
+                s1 = resolveToken(tokens(1)) 
+                s2 = trim(tokens(2))
+
+                read(s1, *, iostat=ios_local) fileUnit
+                if (ios_local /= 0) then
+                    write(*,*) "Error: invalid file handle variable"
+                    cycle
+                end if
+                read(fileUnit, '(A)', iostat=ios_local) tempLine
+                if (ios_local /= 0) then
+                    call setVar(trim(s2), "")  
+                else
+                    call setVar(trim(s2), trim(tempLine))
+                end if
+            else
+                write(*,*) "Error: read requires 2 tokens: handleName|lineVar"
+            end if
+
+
+            case ("close")
+                if (ntok == 1) then
+                    s1 = resolveToken(tokens(1))
+
+                    read(s1, *, iostat=ios_local) fileUnit
+                    if (ios_local /= 0) then
+                        write(*,*) "Error: invalid file handle variable"
+                    else
+                        close(fileUnit, iostat=ios_local)
+                        if (ios_local /= 0) then
+                            write(*,*) "Error closing file handle ", trim(s1)
+                        end if
+                    end if
+                else
+                    write(*,*) "Error: close requires 1 token: handleName"
+                end if
+
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
@@ -443,6 +504,13 @@ program interpreter
     close(1)
 
     contains 
+
+    function toString(i) result(s)
+        integer, intent(in) :: i
+        character(len=256) :: s
+        write(s, '(I0)') i
+    end function toString
+
 
     subroutine extendArrayVar(arr, newSize)
         type(Var), allocatable, intent(inout) :: arr(:)
