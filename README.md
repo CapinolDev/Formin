@@ -48,7 +48,7 @@ spew#/greeting/#
 
 ## Installation
 
-Formin is distributed as a **stand-alone binary** — no installation or dependencies required.  
+Formin is distributed as a **stand-alone binary** - no installation or dependencies required.  
 Just download it from the [Releases page](https://github.com/CapinolDev/formin/releases) and run it.
 
 ---
