@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.1  
+**Version:** 1.0.2
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
