@@ -26,7 +26,17 @@ spew#/greeting/#
 
 ```
 
---- 
+---
+
+- [Overview](#overview)
+- [Commands](#commands)
+  - [Format](#format)
+  - [Execution](#execution)
+  - [Variables](#variables)
+  - [Arithmetic](#arithmetic)
+  - [File Handling](#file-handling)
+
+---
 
 ## Commands:
 
