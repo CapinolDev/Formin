@@ -29,6 +29,10 @@ spew#/greeting/#
 ---
 
 - [Overview](#overview)
+- [Installation](#installation)
+    -[Linux/MacOS](#linux---macos)
+    -[Windows](#windows-using-powershell-or-cmd)
+    -[Licenses](#license)
 - [Commands](#commands)
   - [Format](#format)
   - [Execution](#execution)
@@ -36,6 +40,40 @@ spew#/greeting/#
   - [Arithmetic](#arithmetic)
   - [File Handling](#file-handling)
 
+---
+
+## Installation
+
+Formin is distributed as a **stand-alone binary** — no installation or dependencies required.  
+Just download it from the [Releases page](https://github.com/CapinolDev/formin/releases) and run it.
+
+---
+
+###  Linux /  macOS
+1. Download the latest **`formin`** binary from the [Releases page](https://github.com/CapinolDev/Formin/releases/latest).
+2. Make it executable:
+   ```bash
+   chmod +x formin ```
+3. Move it to a system path (so you can run it anywhere):
+    ```bash
+     sudo mv formin /usr/local/bin/ ```
+4. Run Formin: 
+```bash
+formin examples/hello.formin
+```
+### Windows (using PowerShell or CMD)
+
+1. Download the latest **`formin`** binary from the [Releases page](https://github.com/CapinolDev/Formin/releases/latest).
+2. Open PowerShell in the folder where the binary is located.
+3. Run 
+```powershell
+    .\formin examples\hello.formin
+```
+If Windows blocks the binary, right-click → Properties → check Unblock, or run PowerShell as Administrator.
+
+### License
+Formin binaries are provided under the MIT License.
+Logo © Capinol 2025, licensed under CC BY-SA 4.0.
 ---
 
 ## Commands:
