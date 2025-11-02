@@ -1,0 +1,21 @@
+ask#/'What will x be?'|x/#
+type#/xType|x/#
+ifgo#/xType|is|str|isStr|_/#
+ifgo#/xType|is|int|isInt|_/#
+ifgo#/xType|is|float|isFloat|_/#
+bye
+
+mark#/isStr/#
+color#/green/#
+spew#/X is a string./#
+bye
+
+mark#/isInt/#
+color#/blue/#
+spew#/X is an int./#
+bye
+
+mark#/isFloat/#
+color#/yellow/#
+spew#/X is a float./#
+bye

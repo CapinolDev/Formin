@@ -4,3 +4,5 @@ str#/cat|message|Greeting|Introduction|sp/#
 spew#/message/#
 str#/cat|message|Greeting|Introduction/#
 spew#/message/#
+str#/len|msgLen|message/#
+spew#/msgLen/#

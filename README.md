@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.4
+**Version:** 1.0.5
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -168,9 +168,13 @@ goback#//#
 ### Variables
 
 #### create#//#
-makes / sets a variable to a value.
+makes a variable and sets it to a value.
 Has 3 types: int, real, string
 Example: ``` create#/x|10|int/# ```
+
+#### set#//#
+sets an existing variable to a different value/type
+Example: ``` set#/x|'a'|str/#
 
 #### ask#//#
 Asks the user a question, and stores it in a variable
@@ -211,6 +215,10 @@ spew#/'Your number isnt six! '/#
 bye
 
 ``` 
+
+#### type#//#
+gets the type of a var and stores it in another var.
+[Example](Examples/type.fmn)
 
 ### Arithmetic
 #### add#//#
@@ -287,13 +295,14 @@ write sp in the spacing token.
 The spacing token can be left out.
 [Example](Examples/cat.fmn)
 
-##### rev, low, up
+##### rev, low, up, len
 Syntax: 
 ```formin
 str#/*any of the 3*|*var to store result*|*string*/#
 ```
 Either reverses the string and stores it to the var,
-or converts it into uppercase/lowercase and stores in the var.
+or converts it into uppercase/lowercase and stores in the var
+or gets the lenght and stores in the var.
 Example:
 ```formin
 create#/anadrome|'drawer'/#

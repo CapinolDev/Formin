@@ -13,7 +13,7 @@ program interpreter
     integer :: ntok
     character(len=256) :: outAdd
     integer :: a, b, sum, ios_local, sub, mult, div
-    character(len=256) :: s1, s2, tempRead
+    character(len=256) :: s1, s2, s3, tempRead, localhelp
     integer :: lineInt
     integer :: lineNumber
     character (len=1024) :: osSeperator, strSave
@@ -126,12 +126,12 @@ program interpreter
             case ("create")
                 if (ntok >= 2) then
                     if (ntok == 3) then
-                        call setVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
+                        call createVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
                     else
-                        call setVar(trim(tokens(1)), resolveToken(tokens(2)))
+                        call createVar(trim(tokens(1)), resolveToken(tokens(2)))
                     end if
                 else if (ntok == 1) then
-                    call setVar(trim(tokens(1)), '', 'str')
+                    call createVar(trim(tokens(1)), '', 'str')
                 else
                     write(*,'(A)') "Error: create requires 1-3 tokens: name|[value]|[type]"
                 end if
@@ -314,11 +314,41 @@ program interpreter
                     else
                         write(*,*) "Error: up requires 2 tokens: var|string"
                     end if
+                case("len")
+                    if(ntok==3) then
+                        s1 = trim(tokens(2))
+                        s2 = resolveToken(tokens(3))
+
+                        i = len_trim(s2)               
+                        write(strSave, '(I0)') i       
+
+                        call setVar(s1, trim(strSave), 'int')
+                    else
+                        write(*,*) "Error: len requires 2 tokens: var|string "
+                    end if
                 
                 end select
+            case("type")
+                if(ntok==2) then
+                    s1 = trim(tokens(1))
+                    s2 = trim(tokens(2))
+
+                    call setVar(s1, getVarType(trim(s2)), 'str') 
+                else
+                    write(*,*) "Error: type requires 2 tokens: varToStore|var"
+                end if
+            case("set")
+                if (ntok == 2) then
+                    call modifyVar(trim(tokens(1)), resolveToken(tokens(2)))
+                else if (ntok == 3) then
+                    call modifyVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
+                else                        
+                    write(*,*) "Error: set requires 2 or 3 tokens: var|value|[type]"
+                end if
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
+        
         end if
     end do
 
@@ -430,6 +460,16 @@ contains
         integer :: tempInt
         character(len=8) :: typeToSet
 
+        do i = 1, VarCount
+            if (trim(Vars(i)%name) == trim(name)) then
+                Vars(i)%value   = trim(value)
+                if (present(vartype)) then
+                Vars(i)%vartype = adjustl(trim(vartype))
+                end if
+                return
+            end if
+        end do
+        
         if (present(vartype)) then
             typeToSet = adjustl(trim(vartype))
         else
@@ -446,13 +486,7 @@ contains
             end if
         end if
 
-        do i = 1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                Vars(i)%value   = trim(value)
-                Vars(i)%vartype = trim(typeToSet)
-                return
-            end if
-        end do
+        
 
         VarCount = VarCount + 1
         call extendArrayVar(Vars, VarCount)
@@ -709,6 +743,51 @@ contains
             end if
         end do
     end function upper
+
+    subroutine createVar(name, value, vartype)
+        character(len=*), intent(in) :: name, value
+        character(len=*), intent(in), optional :: vartype
+        integer :: i
+
+        do i = 1, VarCount
+            if (trim(Vars(i)%name) == trim(name)) then
+                write(*,*) "Error: variable already exists: ", trim(name)
+                return
+            end if
+        end do
+
+        if (present(vartype)) then
+            call setVar(name, value, vartype)
+        else
+            call setVar(name, value)
+        end if
+    end subroutine createVar
+
+
+    subroutine modifyVar(name, value, vartype)
+        character(len=*), intent(in) :: name, value
+        character(len=*), intent(in), optional :: vartype
+        integer :: i, found
+
+        found = 0
+        do i = 1, VarCount
+            if (trim(Vars(i)%name) == trim(name)) then
+                found = 1
+                exit
+            end if
+        end do
+
+        if (found == 0) then
+            write(*,*) "Error: variable not found: ", trim(name)
+            return
+        end if
+
+        if (present(vartype)) then
+            call setVar(name, value, vartype)
+        else
+            call setVar(name, value)
+        end if
+    end subroutine modifyVar
 
 
 
