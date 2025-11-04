@@ -1,0 +1,15 @@
+color#/bright_green/#
+ask#/Input a number|x/#
+mod#/xMod|x|2/#
+ifgo#/xMod|is|0|isEven|isOdd/#
+bye
+
+mark#/isEven/#
+color#/bright_blue/#
+spew#/x|'is even'/#
+bye
+
+mark#/isOdd/#
+color#/bright_yellow/#
+spew#/x|'is odd'/#
+bye

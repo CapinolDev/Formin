@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.5
+**Version:** 1.0.6
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -51,6 +51,7 @@ spew#/greeting/#
 
 Formin is distributed as a **stand-alone binary** - no installation or dependencies required.  
 Just download it from the [Releases page](https://github.com/CapinolDev/formin/releases) and run it.
+You can get your version of fortran by using ```formin ver```
 
 ---
 
@@ -245,6 +246,10 @@ Syntax: ``` sub#/*variable to store result*|*first num*|*second num*/# ```
 Example: (Divide x by 2) 
 ``` div#/x|x|2/# ```
 Watch out for divison by zero!
+
+#### mod#//#
+Gets the remainder of a number after division
+[Example](Examples/mod.fmn)
 
 ### File handling
 

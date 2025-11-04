@@ -1,7 +1,7 @@
 program interpreter
     use terminal_colors
     implicit none
-
+    character(len=5) :: version
     integer :: ios
     integer :: nextFileUnit = 20
     integer :: fileUnit
@@ -18,9 +18,10 @@ program interpreter
     integer :: lineNumber
     character (len=1024) :: osSeperator, strSave
     character (len=5) :: osClear
-    integer :: i
+    integer :: i, finalValInt
     integer, allocatable :: goStack(:)
     integer :: goDepth = 0
+    character(len=256) :: finalValStr
 
     type :: Var
         character(len=32)  :: name
@@ -43,6 +44,8 @@ program interpreter
         osClear = 'clear'
     end if
 
+    version = '1.0.6'
+
     VarCount = 0
     MarkerCount = 0
     allocate(Vars(0))
@@ -50,18 +53,20 @@ program interpreter
     lineNumber = 0
 
     call get_command_argument(1, fileName)
+    if (trim(fileName) == 'ver') then
+        write(*,*) "Version ", trim(version)
 
-    if (len_trim(fileName) == 0) then
+    else if (len_trim(fileName) == 0) then
         write(*,'(A)') "Usage: ./formin <filename>"
         stop
     end if
-
-    open(unit=1, file=trim(fileName), action='read', status='old', iostat=ios)
-    if (ios /= 0) then
-        write(*,'(A)') "Error opening file!"
-        stop
-    end if
-
+    if(trim(fileName) /= 'ver') then
+        open(unit=1, file=trim(fileName), action='read', status='old', iostat=ios)
+        if (ios /= 0) then
+            write(*,'(A)') "Error opening file!"
+            stop
+        end if
+    
     do
         read(1, '(A)', iostat=ios) line
         if (ios /= 0) exit
@@ -345,6 +350,21 @@ program interpreter
                 else                        
                     write(*,*) "Error: set requires 2 or 3 tokens: var|value|[type]"
                 end if
+            case("mod")
+                if(ntok==3) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+                    s3 = trim(tokens(3))
+                    read(s2,*) a
+                    read(s3,*) b
+
+                    finalValInt = modulo(a, b)
+                    write(finalValStr, '(I0)') finalValInt
+
+                    call setVar(s1, finalValStr, 'int')
+                else
+                    write(*,*) "Error: mod requires 3 tokens: var|value to mod|value to mod by"
+                end if
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
@@ -353,7 +373,7 @@ program interpreter
     end do
 
     close(1)
-
+end if
 contains
 
         subroutine numeric_op(tokens, ntok, op)
