@@ -1,0 +1,32 @@
+create#/answer/#
+create#/timesLooped|0/#
+
+randi#/answer|100/#
+
+mark#/loop/#
+add#/timesLooped|timesLooped|1/#
+ask#/'Input number guess: '|userInput/#
+ifgo#/userInput|>|answer|tooBig|_/#
+ifgo#/userInput|<|answer|tooSmall|_/#
+ifgo#/userInput|is|answer|correct|_/#
+go#/loop/#
+
+mark#/tooBig/#
+color#/bright_red/#
+spew#/Too big!/#
+color#/reset/#
+goback#//#
+
+mark#/tooSmall/#
+color#/bright_red/#
+spew#/Too small!/#
+color#/reset/#
+goback#//#
+
+mark#/correct/#
+color#/bright_green/#
+spew#/correct!/#
+color#/bright_cyan/#
+spew#/number of guesses:|timesLooped/#
+
+bye

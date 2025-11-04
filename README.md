@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.6
+**Version:** 1.0.7
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -166,6 +166,10 @@ spew#/'3'/#
 goback#//#
 ```
 
+#### getos#//#
+gets the users os (Either win or unix) and saves to a var
+[Example](Examples/getOs.fmn)
+
 ### Variables
 
 #### create#//#
@@ -220,6 +224,12 @@ bye
 #### type#//#
 gets the type of a var and stores it in another var.
 [Example](Examples/type.fmn)
+
+#### randi#//#
+gets a random value from (0 to 1)*userMod and saves it in a var.
+Syntax: ```formin randi#/*var to store output*|*userMod*/# ```
+[Example](Examples/numberGuess.fmn)
+
 
 ### Arithmetic
 #### add#//#

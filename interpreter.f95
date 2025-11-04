@@ -22,7 +22,9 @@ program interpreter
     integer, allocatable :: goStack(:)
     integer :: goDepth = 0
     character(len=256) :: finalValStr
-
+    character(len=256) :: userOs
+    real :: r
+    
     type :: Var
         character(len=32)  :: name
         character(len=256) :: value
@@ -40,17 +42,22 @@ program interpreter
     call get_environment_variable("PATH", osSeperator)
     if (index(osSeperator, ";") > 0) then
         osClear = 'cls'
+        userOs = 'Windows'
     else
         osClear = 'clear'
+        userOs = 'Unix'
     end if
 
-    version = '1.0.6'
+    version = '1.0.7'
 
     VarCount = 0
     MarkerCount = 0
     allocate(Vars(0))
     allocate(Markers(0))
     lineNumber = 0
+
+
+
 
     call get_command_argument(1, fileName)
     if (trim(fileName) == 'ver') then
@@ -60,13 +67,14 @@ program interpreter
         write(*,'(A)') "Usage: ./formin <filename>"
         stop
     end if
-    if(trim(fileName) /= 'ver') then
-        open(unit=1, file=trim(fileName), action='read', status='old', iostat=ios)
-        if (ios /= 0) then
-            write(*,'(A)') "Error opening file!"
-            stop
-        end if
-    
+if(trim(fileName) /= 'ver') then
+    open(unit=1, file=trim(fileName), action='read', status='old', iostat=ios)
+    if (ios /= 0) then
+        write(*,'(A)') "Error opening file!"
+        stop
+    end if
+    call init_random()
+
     do
         read(1, '(A)', iostat=ios) line
         if (ios /= 0) exit
@@ -364,6 +372,28 @@ program interpreter
                     call setVar(s1, finalValStr, 'int')
                 else
                     write(*,*) "Error: mod requires 3 tokens: var|value to mod|value to mod by"
+                end if
+            case("getos")
+                if(ntok==1) then
+                    s1 = trim(tokens(1))
+
+                    call setVar(s1, trim(userOs))
+                else 
+                    write(*,*) "Error: getos requires 1 token: var"
+                end if
+            case("randi")
+                if (ntok==2) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+
+                    read(s2,*) a
+                    call random_number(r)
+                    i = floor(r * a)
+                    write(s2, '(I0)') i
+                    call setVar(s1, s2)
+                
+                else 
+                    write(*,*) "Error: randi requires 2 tokens: var|multiplier"
                 end if
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
@@ -810,5 +840,15 @@ contains
     end subroutine modifyVar
 
 
+    subroutine init_random()
+        integer, allocatable :: seed(:)
+        integer :: n, i, j
+        call random_seed(size=n)
+        allocate(seed(n))
+        call system_clock(count=i)
+        seed = i + 37 * [(j, j=1,n)]
+        call random_seed(put=seed)
+        deallocate(seed)
+    end subroutine init_random
 
 end program interpreter
