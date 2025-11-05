@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.7
+**Version:** 1.0.8
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -43,6 +43,7 @@ spew#/greeting/#
   - [Arithmetic](#arithmetic)
   - [File Handling](#file-handling)
   - [Strings](#strings)
+  - [Lists](#lists)
 - [Related links](#related-links)
 
 ---
@@ -261,6 +262,10 @@ Watch out for divison by zero!
 Gets the remainder of a number after division
 [Example](Examples/mod.fmn)
 
+#### sqrt#//#
+Gets the square root of a number.
+Example: ``` sqrt#/x|16/# ``` > x is 4
+
 ### File handling
 
 #### open#//#
@@ -326,6 +331,36 @@ str#/rev|anadrome|anadrome/#
 spew#/anadrome/#
 ```
 
+### Lists
+
+lists function the same as arrays.
+syntax: ``` list#/*method*|*params*/# ```
+list methods:
+
+create/new : makes a new list with set name. 
+Example: ``` list#/create|names/# ```
+
+push: pushes value to a list (puts it at the end of the list)
+Example: ``` list#/push|names|'Robert'/# ```
+
+get: gets value of list item at an index
+Example: ``` list#/get|firstName|names|1/# ```
+The example above gets the first item of the list 'names' and stores it in a variable 'firstName'.
+
+set: sets value of an item at an index
+Example: ``` list#/set|names|1|'Josh'/# ```
+Example above sets the first value in the list 'names' to 'Josh'.
+
+len: gets the lenght of a list
+Example: ``` list#/len|listLenght|names/# ```
+Example above gets the lenght of the list 'names' and stores it in a var 'listLenght'.
+
+pop: removes last item of list and saves it
+Example: ``` list#/pop|lastName|names/# ```
+Example above removes the last item of the list 'names' and stores it in a var 'lastName'.
+
+clear: clears a list.
+Example: ``` list#/clear|names/# ```
 
 
 --- 

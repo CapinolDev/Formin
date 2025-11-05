@@ -1,0 +1,8 @@
+list#/create|names/#
+list#/push|names|'Bob'/#
+list#/push|names|'Alice'/#
+list#/pop|lastName|names/#
+spew#/lastName/#
+spew#/names[1]/#
+
+

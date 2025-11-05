@@ -24,6 +24,11 @@ program interpreter
     character(len=256) :: finalValStr
     character(len=256) :: userOs
     real :: r
+    integer :: jdx
+    character(len=256), allocatable :: tmp(:)
+    character(len=256) :: tmpStr
+
+    
     
     type :: Var
         character(len=32)  :: name
@@ -34,10 +39,17 @@ program interpreter
         integer :: pos
         character(len=256) :: name
     end type Marker
+    type :: List
+        character(len=256) :: name
+        character(len=256), allocatable :: items(:)
+    end type List
 
     type(Var), allocatable    :: Vars(:)
     type(Marker), allocatable :: Markers(:)
-    integer :: VarCount, MarkerCount
+    type(List), allocatable :: Lists(:)
+    integer :: VarCount, MarkerCount, ListCount
+
+
 
     call get_environment_variable("PATH", osSeperator)
     if (index(osSeperator, ";") > 0) then
@@ -48,12 +60,14 @@ program interpreter
         userOs = 'Unix'
     end if
 
-    version = '1.0.7'
+    version = '1.0.8'
 
     VarCount = 0
     MarkerCount = 0
+    ListCount = 0
     allocate(Vars(0))
     allocate(Markers(0))
+    allocate(Lists(0))
     lineNumber = 0
 
 
@@ -274,8 +288,6 @@ if(trim(fileName) /= 'ver') then
                         if (ios /= 0) exit
                         lineNumber = lineNumber + 1
                     end do
-                else
-                    !write(*,*) "Error: no previous go to return to"
                 end if
             case("str")
                 select case(trim(tokens(1)))
@@ -392,9 +404,117 @@ if(trim(fileName) /= 'ver') then
                     write(s2, '(I0)') i
                     call setVar(s1, s2)
                 
+            
                 else 
                     write(*,*) "Error: randi requires 2 tokens: var|multiplier"
                 end if
+
+            case("sqrt")
+                if (ntok==2) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+                    
+                    read(s2,*) r
+                    r = sqrt(r)
+                    write(s2, '(F5.3)') r
+                    call setVar(trim(s1),trim(s2))
+                else
+                    write(*,*) "Error: sqrt requires 2 tokens: var|number"
+                end if
+            case("list")
+                if (ntok < 2) then
+                    write(*,*) "Error: list requires a subcommand"
+                else
+                    select case (trim(lower(tokens(1))))
+                    case ("create","new")
+                        if (ntok /= 2) then
+                            write(*,*) "Error: list create|name"
+                        else
+                            call createList(trim(tokens(2)))
+                        end if
+
+                    case ("push")
+                        if (ntok /= 3) then
+                            write(*,*) "Error: list push|name|value"
+                        else
+                            call listPush(trim(tokens(2)), trim(resolveToken(tokens(3))))
+                        end if
+
+                    case ("get")
+                        if (ntok /= 4) then
+                            write(*,*) "Error: list get|outVar|name|index"
+                        else
+                            tmpStr = resolveToken(tokens(4))
+                            read(tmpStr, *, iostat=ios_local) i
+                            if (ios_local /= 0) then
+                                write(*,*) "Error: index must be integer"
+                            else
+                                call setVar(trim(tokens(2)), listGet(trim(tokens(3)), i), 'str')
+                            end if
+                        end if
+
+                    case ("set")
+                        if (ntok /= 4) then
+                            write(*,*) "Error: list set|name|index|value"
+                        else
+                            tmpStr = resolveToken(tokens(3))
+                            read(tmpStr, *, iostat=ios_local) i
+                            if (ios_local /= 0) then
+                                write(*,*) "Error: index must be integer"
+                            else
+                                call listSet(trim(tokens(2)), i, trim(resolveToken(tokens(4))))
+                            end if
+                        end if
+
+                    case ("len")
+                        if (ntok /= 3) then
+                            write(*,*) "Error: list len|outVar|name"
+                        else
+                            write(finalValStr,'(I0)') listLen(trim(tokens(3)))
+                            call setVar(trim(tokens(2)), finalValStr, 'int')
+                        end if
+
+                    case ("pop")
+                        if (ntok /= 3) then
+                            write(*,*) "Error: list pop|outVar|name"
+                        else
+                            i = listLen(trim(tokens(2+1)))
+                            if (i <= 0) then
+                                call setVar(trim(tokens(2)), "", 'str')
+                            else
+                                call setVar(trim(tokens(2)), listGet(trim(tokens(3)), i), 'str')
+                                call listSet(trim(tokens(3)), i, "")    
+                            
+                                block
+                                    
+                                    jdx = findList(trim(tokens(3)))
+                                    if (jdx > 0) then
+                                        if (i == 1) then
+                                            deallocate(Lists(jdx)%items)
+                                            allocate(Lists(jdx)%items(0))
+                                        else
+                                            
+                                            allocate(tmp(i-1))
+                                            tmp = Lists(jdx)%items(1:i-1)
+                                            call move_alloc(tmp, Lists(jdx)%items)
+                                        end if
+                                    end if
+                                end block
+                            end if
+                        end if
+
+                    case ("clear")
+                        if (ntok /= 2) then
+                            write(*,*) "Error: list clear|name"
+                        else
+                            call listClear(trim(tokens(2)))
+                        end if
+
+        case default
+            write(*,*) "Error: unknown list subcommand"
+        end select
+    end if
+
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
             end select
@@ -502,6 +622,16 @@ contains
         call move_alloc(tmp, arr)
     end subroutine extendArrayMark
 
+    subroutine extendArrayList(arr, newSize)
+        type(List), allocatable, intent(inout) :: arr(:)
+        integer, intent(in) :: newSize
+        type(List), allocatable :: tmp(:)
+
+        allocate(tmp(newSize))
+        if (size(arr) > 0) tmp(1:size(arr)) = arr
+        call move_alloc(tmp,arr)
+    end subroutine extendArrayList
+    
     subroutine setVar(name, value, vartype)
         character(len=*), intent(in) :: name, value
         character(len=*), intent(in), optional :: vartype
@@ -544,6 +674,17 @@ contains
         Vars(VarCount)%value   = trim(value)
         Vars(VarCount)%vartype = trim(typeToSet)
     end subroutine setVar
+
+    function getVarVar(name) result(returnVar)
+        character(len=*), intent(in) :: name
+        type(Var) :: returnVar
+        
+        do i =1, VarCount
+            if (trim(Vars(i)%name) == trim(name)) then
+                returnVar = Vars(i)
+            end if
+        end do
+    end function getVarVar
 
     function getVar(name) result(val)
         character(len=*), intent(in) :: name
@@ -633,11 +774,13 @@ contains
     function resolveToken(tok) result(res)
         character(len=*), intent(in) :: tok
         character(len=256) :: res
-        character(len=256) :: trimmed
-        integer :: i
+        character(len=256) :: trimmed, base
+        integer :: i, idx
+        logical :: ok
 
         trimmed = trim(tok)
 
+        
         if (len_trim(trimmed) >= 2) then
             if (trimmed(1:1) == "'" .and. trimmed(len_trim(trimmed):len_trim(trimmed)) == "'") then
                 res = trimmed(2:len_trim(trimmed)-1)
@@ -645,12 +788,25 @@ contains
             end if
         end if
 
+
+        ok = try_parse_indexed_token(trimmed, base, idx)
+        if (ok) then
+            res = listGet(base, idx)
+            return
+        end if
+
+        
         do i = 1, VarCount
             if (trimmed == trim(Vars(i)%name)) then
                 res = Vars(i)%value
                 return
             end if
         end do
+
+        if (findList(trimmed) > 0) then
+            res = trimmed
+            return
+        end if
 
         res = trimmed
     end function resolveToken
@@ -850,5 +1006,138 @@ contains
         call random_seed(put=seed)
         deallocate(seed)
     end subroutine init_random
+
+    integer function findList(name) result(idx)
+        character(len=*), intent(in) :: name
+        integer :: j
+        idx = 0
+        do j = 1, ListCount
+            if (trim(Lists(j)%name) == trim(name)) then
+                idx = j
+                return
+            end if
+        end do
+    end function findList
+
+    subroutine createList(name)
+        character(len=*), intent(in) :: name
+        integer :: j
+        j = findList(name)
+        if (j > 0) then
+            write(*,*) "Error: list already exists: ", trim(name)
+            return
+        end if
+        ListCount = ListCount + 1
+        call extendArrayList(Lists, ListCount)
+        Lists(ListCount)%name = trim(name)
+        if (.not.allocated(Lists(ListCount)%items)) allocate(Lists(ListCount)%items(0))
+    end subroutine createList
+
+    subroutine listPush(name, value)
+        character(len=*), intent(in) :: name, value
+        integer :: j, n
+        character(len=256), allocatable :: tmp(:)
+
+        j = findList(name)
+        if (j == 0) then
+            call createList(name)
+            j = ListCount
+        end if
+
+        if (.not.allocated(Lists(j)%items)) then
+            allocate(Lists(j)%items(1))
+            Lists(j)%items(1) = trim(value)
+        else
+            n = size(Lists(j)%items)
+            allocate(tmp(n+1))
+            tmp(1:n) = Lists(j)%items
+            tmp(n+1) = trim(value)
+            call move_alloc(tmp, Lists(j)%items)
+        end if
+    end subroutine listPush
+
+
+    subroutine listSet(name, idx, value)
+        character(len=*), intent(in) :: name, value
+        integer, intent(in) :: idx
+        integer :: j, n
+        j = findList(name)
+        if (j == 0) then
+            write(*,*) "Error: list not found: ", trim(name)
+            return
+        end if
+        if (.not.allocated(Lists(j)%items)) then
+            write(*,*) "Error: list is empty: ", trim(name)
+            return
+        end if
+        n = size(Lists(j)%items)
+        if (idx < 1 .or. idx > n) then
+            write(*,*) "Error: index out of bounds"
+            return
+        end if
+        Lists(j)%items(idx) = trim(value)
+    end subroutine listSet
+
+    function listGet(name, idx) result(val)
+        character(len=*), intent(in) :: name
+        integer, intent(in) :: idx
+        character(len=256) :: val
+        integer :: j, n
+        val = ""
+        j = findList(name)
+        if (j == 0) then
+            write(*,*) "Error: list not found: ", trim(name)
+            return
+        end if
+        if (.not.allocated(Lists(j)%items)) then
+            write(*,*) "Error: list is empty: ", trim(name)
+            return
+        end if
+        n = size(Lists(j)%items)
+        if (idx < 1 .or. idx > n) then
+            write(*,*) "Error: index out of bounds"
+            return
+        end if
+        val = Lists(j)%items(idx)
+    end function listGet
+
+    integer function listLen(name) result(n)
+        character(len=*), intent(in) :: name
+        integer :: j
+        n = 0
+        j = findList(name)
+        if (j == 0) return
+        if (allocated(Lists(j)%items)) n = size(Lists(j)%items)
+    end function listLen
+
+    subroutine listClear(name)
+        character(len=*), intent(in) :: name
+        integer :: j
+        j = findList(name)
+        if (j == 0) then
+            write(*,*) "Error: list not found: ", trim(name)
+            return
+        end if
+        if (allocated(Lists(j)%items)) deallocate(Lists(j)%items)
+        allocate(Lists(j)%items(0))
+    end subroutine listClear
+
+    function try_parse_indexed_token(tok, base, idx) result(ok)
+        character(len=*), intent(in) :: tok
+        character(len=256), intent(out) :: base
+        integer, intent(out) :: idx
+        logical :: ok
+        integer :: lb, rb, iostat_local
+        character(len=256) :: idxstr
+        ok = .false.; base = ""; idx = -1
+        lb = index(tok, "[")
+        if (lb == 0) return
+        rb = index(tok, "]")
+        if (rb == 0 .or. rb < lb) return
+        base = adjustl(trim(tok(1:lb-1)))
+        idxstr = adjustl(trim(tok(lb+1:rb-1)))
+        read(idxstr, *, iostat=iostat_local) idx
+        ok = (iostat_local == 0 .and. len_trim(base) > 0)
+    end function try_parse_indexed_token
 
 end program interpreter

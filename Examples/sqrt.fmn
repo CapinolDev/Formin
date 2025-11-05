@@ -1,0 +1,5 @@
+ask#/Input a number: |userInput/#
+sqrt#/result|userInput/#
+type#/resultType|result/#
+spew#/'Result:'|result/#
+spew#/'Type of result:'|resultType/#
