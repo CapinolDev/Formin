@@ -374,7 +374,7 @@ if(trim(fileName) /= 'ver') then
                 if(ntok==3) then
                     s1 = trim(tokens(1))
                     s2 = resolveToken(tokens(2))
-                    s3 = trim(tokens(3))
+                    s3 = resolveToken(tokens(3))
                     read(s2,*) a
                     read(s3,*) b
 
@@ -1122,22 +1122,31 @@ contains
         allocate(Lists(j)%items(0))
     end subroutine listClear
 
-    function try_parse_indexed_token(tok, base, idx) result(ok)
+   function try_parse_indexed_token(tok, base, idx) result(ok)
         character(len=*), intent(in) :: tok
         character(len=256), intent(out) :: base
         integer, intent(out) :: idx
         logical :: ok
         integer :: lb, rb, iostat_local
-        character(len=256) :: idxstr
-        ok = .false.; base = ""; idx = -1
+        character(len=256) :: idxstr, resolvedIdxStr
+
+        ok = .false.
+        base = ""
+        idx = -1
+
         lb = index(tok, "[")
         if (lb == 0) return
         rb = index(tok, "]")
         if (rb == 0 .or. rb < lb) return
+
         base = adjustl(trim(tok(1:lb-1)))
         idxstr = adjustl(trim(tok(lb+1:rb-1)))
-        read(idxstr, *, iostat=iostat_local) idx
+
+        resolvedIdxStr = resolveToken(idxstr)
+
+        read(resolvedIdxStr, *, iostat=iostat_local) idx
         ok = (iostat_local == 0 .and. len_trim(base) > 0)
     end function try_parse_indexed_token
+
 
 end program interpreter

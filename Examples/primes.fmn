@@ -1,0 +1,53 @@
+list#/create|primes/#
+create#/amount|100/#
+create#/i|0/#
+create#/u|1/#
+create#/listLen/#
+create#/primeAmountLeft/#
+
+
+mark#/start/#
+color#/bright_magenta/#
+spew#/prime calculator/#
+color #/reset/#
+
+ask#/How many numbers to check primeness of:|primeAmount/#
+set#/primeAmountLeft|primeAmount/#
+
+mark#/loop/#
+set#/i|0/#
+sub#/primeAmountLeft|primeAmountLeft|1/#
+add#/u|u|1/#
+ifgo#/primeAmountLeft|is|0|end|checkIfPrime/#
+
+
+
+mark#/checkIfPrime/#
+list#/len|listLen|primes/#
+add#/i|i|1/#
+ifgo#/i|<|listLen|_|isPrime/#
+mod#/modRes|u|primes[i]/#
+ifgo#/modRes|isnt|0|_|isntPrime/#
+go#/checkIfPrime/#
+bye
+
+
+
+mark#/isPrime/#
+color#/bright_green/#
+list#/push|primes|u/#
+spew#/u|'is prime'/#
+color#/reset/#
+go#/loop/#
+bye
+
+mark#/isntPrime/#
+color#/bright_red/#
+spew#/u|'isnt prime.'/#
+color#/reset/#
+go#/loop/#
+
+mark#/end/#
+list#/len|primeCount|primes/#
+spew#/primeCount/#
+bye
