@@ -1,0 +1,10 @@
+create#/i|0/#
+
+cputime#/start/#
+mark#/loop/#
+add#/i|i|1/#
+ifgo#/i|<|12000|loop|_/#
+
+cputime#/end/#
+sub#/time|end|start/#
+spew#/time/#

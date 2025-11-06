@@ -28,7 +28,6 @@ program interpreter
     character(len=256) :: tmpStr
     character(len=256) :: suffix
     real :: timerStart, timerEnd
-    
 
     
     
@@ -66,7 +65,7 @@ program interpreter
         userOs = 'Unix'
     end if
 
-    version = '1.1.0'
+    version = '1.1.1'
 
     VarCount = 0
     MarkerCount = 0
@@ -146,7 +145,7 @@ if(trim(fileName) /= 'ver') then
         if (trim(line) == 'bye') then
             if(verbose=='loud') then
                 call cpu_time(timerEnd)
-                print*, 'Execution time: ', timerEnd - timerStart, 'ms'
+                print*, 'Execution time: ', timerEnd - timerStart, 's'
             end if
             exit
         end if
@@ -160,7 +159,7 @@ if(trim(fileName) /= 'ver') then
             value   = adjustl(trim(line(pos1+2:pos2-1)))
             suffix = adjustl(trim(line(pos2+2:pos2+3)))
             call split(value, "|", tokens, ntok)
-            if (suffix=='') then
+            if (suffix==''.or.suffix=='!') then
                 call execute_command(command, tokens, ntok, lineNumber)
             end if
             if (suffix=='?') then
@@ -196,6 +195,9 @@ contains
 
             if (ntok /= 3) then
                 write(*,'(A)') "Error: arithmetic requires 3 tokens: name|lhs|rhs"
+                if (suffix=='!') then
+                        call exit(1)
+                    end if
                 return
             end if
 
@@ -207,6 +209,9 @@ contains
 
             if (ios1 /= 0 .or. ios2 /= 0) then
                 write(*,'(A)') "Error: non-numeric operands"
+                if (suffix=='!') then
+                    call exit(1)
+                end if
                 return
             end if
 
@@ -221,6 +226,9 @@ contains
             case ("/")
                 if (b == 0.0d0) then
                     write(*,'(A)') "Error: division by zero"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                     return
                 end if
                 res = a / b
@@ -247,6 +255,9 @@ contains
 
         else
             write(*,*) "Error: marker not found: ", trim(tokMarker)
+            if (suffix=='!') then
+                call exit(1)
+            end if
         end if
     end subroutine jump_to
 
@@ -624,6 +635,9 @@ contains
         do i = 1, VarCount
             if (trim(Vars(i)%name) == trim(name)) then
                 write(*,*) "Error: variable already exists: ", trim(name)
+                if (suffix=='!') then
+                    call exit(1)
+                end if
                 return
             end if
         end do
@@ -651,6 +665,9 @@ contains
 
         if (found == 0) then
             write(*,*) "Error: variable not found: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
 
@@ -691,6 +708,9 @@ contains
         j = findList(name)
         if (j > 0) then
             write(*,*) "Error: list already exists: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         ListCount = ListCount + 1
@@ -730,15 +750,24 @@ contains
         j = findList(name)
         if (j == 0) then
             write(*,*) "Error: list not found: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         if (.not.allocated(Lists(j)%items)) then
             write(*,*) "Error: list is empty: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         n = size(Lists(j)%items)
         if (idx < 1 .or. idx > n) then
             write(*,*) "Error: index out of bounds"
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         Lists(j)%items(idx) = trim(value)
@@ -753,15 +782,24 @@ contains
         j = findList(name)
         if (j == 0) then
             write(*,*) "Error: list not found: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         if (.not.allocated(Lists(j)%items)) then
             write(*,*) "Error: list is empty: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         n = size(Lists(j)%items)
         if (idx < 1 .or. idx > n) then
             write(*,*) "Error: index out of bounds"
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         val = Lists(j)%items(idx)
@@ -782,6 +820,9 @@ contains
         j = findList(name)
         if (j == 0) then
             write(*,*) "Error: list not found: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
+            end if
             return
         end if
         if (allocated(Lists(j)%items)) deallocate(Lists(j)%items)
@@ -849,6 +890,9 @@ contains
                     write(*,*)
                 else
                     write(*,'(A)') "Error: spew requires at least one token"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case('spewmult')
@@ -859,6 +903,9 @@ contains
                     write(*,*)
                 else
                     write(*,'(A)') "Error: spewmult requires at least one token"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case('color')
@@ -875,6 +922,9 @@ contains
                     call createVar(trim(tokens(1)), '', 'str')
                 else
                     write(*,'(A)') "Error: create requires 1-3 tokens: name|[value]|[type]"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case ("add")
@@ -891,6 +941,9 @@ contains
                     call setMarker(lineNumber, trim(tokens(1)))
                 else
                     write(*,*) "Error: mark requires exactly 1 token (name)"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case ("go")
@@ -901,9 +954,15 @@ contains
                         lineNumber = lineint - 1
                     else
                         write(*,*) "Error: marker not found: ", trim(tokens(1))
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                     end if
                 else
                     write(*,*) "Error: go requires exactly 1 token (name)"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case("ifgo")
@@ -917,6 +976,9 @@ contains
                     end if
                 else
                     write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker)"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case ("ask")
@@ -926,6 +988,9 @@ contains
                     call setVar(trim(tokens(2)), trim(tempRead))
                 else
                     print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case("clear")
@@ -942,12 +1007,18 @@ contains
                     open(unit=fileUnit, file=s2, status='old', action='read', iostat=ios)
                     if (ios /= 0) then
                         write(*,*) "Error: cannot open file ", trim(s2)
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                         return
                     else
                         call setVar(s1, trim(toString(fileUnit)), 'int')
                     end if
                 else
                     write(*,*) "Error: open requires 2 tokens: handleName|filePath"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case ("read")
@@ -958,6 +1029,9 @@ contains
                     read(s1, *, iostat=ios_local) fileUnit
                     if (ios_local /= 0) then
                         write(*,*) "Error: invalid file handle variable"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                         return
                     end if
                     read(fileUnit, '(A)', iostat=ios_local) tempLine
@@ -968,6 +1042,9 @@ contains
                     end if
                 else
                     write(*,*) "Error: read requires 2 tokens: handleName|lineVar"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case ("close")
@@ -976,14 +1053,23 @@ contains
                     read(s1, *, iostat=ios_local) fileUnit
                     if (ios_local /= 0) then
                         write(*,*) "Error: invalid file handle variable"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                     else
                         close(fileUnit, iostat=ios_local)
                         if (ios_local /= 0) then
                             write(*,*) "Error closing file handle ", trim(s1)
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         end if
                     end if
                 else
                     write(*,*) "Error: close requires 1 token: handleName"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case("goback")
@@ -1013,6 +1099,9 @@ contains
                         call setVar(trim(tokens(2)), trim(strSave), 'str')
                     else
                         write(*,*) "Error: cat requires at least 3 tokens: var|string1|string2|[space]"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                     end if
                 case("rev")
                     if(ntok==3) then
@@ -1022,6 +1111,9 @@ contains
                         call setVar(trim(tokens(2)),trim(strSave))
                     else
                         write(*,*) "Error: rev requires 2 tokens: var|string"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                     end if
                 case("low")
                     if(ntok==3) then
@@ -1031,6 +1123,9 @@ contains
                         call setVar(trim(tokens(2)),trim(strSave))
                     else
                         write(*,*) "Error: low requires 2 tokens: var|string"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                     end if
                 case("up")
                     if(ntok==3) then
@@ -1040,6 +1135,9 @@ contains
                         call setVar(trim(tokens(2)),trim(strSave))
                     else
                         write(*,*) "Error: up requires 2 tokens: var|string"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                     end if
                 case("len")
                     if(ntok==3) then
@@ -1052,6 +1150,9 @@ contains
                         call setVar(s1, trim(strSave), 'int')
                     else
                         write(*,*) "Error: len requires 2 tokens: var|string "
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
                     end if
                 
                 end select
@@ -1063,6 +1164,9 @@ contains
                     call setVar(s1, getVarType(trim(s2)), 'str') 
                 else
                     write(*,*) "Error: type requires 2 tokens: varToStore|var"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
             case("set")
                 if (ntok == 2) then
@@ -1071,6 +1175,9 @@ contains
                     call modifyVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
                 else                        
                     write(*,*) "Error: set requires 2 or 3 tokens: var|value|[type]"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
             case("mod")
                 if(ntok==3) then
@@ -1086,6 +1193,9 @@ contains
                     call setVar(s1, finalValStr, 'int')
                 else
                     write(*,*) "Error: mod requires 3 tokens: var|value to mod|value to mod by"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
             case("getos")
                 if(ntok==1) then
@@ -1094,6 +1204,9 @@ contains
                     call setVar(s1, trim(userOs))
                 else 
                     write(*,*) "Error: getos requires 1 token: var"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
             case("randi")
                 if (ntok==2) then
@@ -1109,6 +1222,9 @@ contains
             
                 else 
                     write(*,*) "Error: randi requires 2 tokens: var|multiplier"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
 
             case("sqrt")
@@ -1122,15 +1238,24 @@ contains
                     call setVar(trim(s1),trim(s2))
                 else
                     write(*,*) "Error: sqrt requires 2 tokens: var|number"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
             case("list")
                 if (ntok < 2) then
                     write(*,*) "Error: list requires a subcommand"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 else
                     select case (trim(lower(tokens(1))))
                     case ("create","new")
                         if (ntok /= 2) then
                             write(*,*) "Error: list create|name"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         else
                             call createList(trim(tokens(2)))
                         end if
@@ -1138,6 +1263,9 @@ contains
                     case ("push")
                         if (ntok /= 3) then
                             write(*,*) "Error: list push|name|value"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         else
                             call listPush(trim(tokens(2)), trim(resolveToken(tokens(3))))
                         end if
@@ -1145,6 +1273,9 @@ contains
                     case ("get")
                         if (ntok /= 4) then
                             write(*,*) "Error: list get|outVar|name|index"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         else
                             tmpStr = resolveToken(tokens(4))
                             read(tmpStr, *, iostat=ios_local) i
@@ -1158,6 +1289,9 @@ contains
                     case ("set")
                         if (ntok /= 4) then
                             write(*,*) "Error: list set|name|index|value"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         else
                             tmpStr = resolveToken(tokens(3))
                             read(tmpStr, *, iostat=ios_local) i
@@ -1171,6 +1305,9 @@ contains
                     case ("len")
                         if (ntok /= 3) then
                             write(*,*) "Error: list len|outVar|name"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         else
                             write(finalValStr,'(I0)') listLen(trim(tokens(3)))
                             call setVar(trim(tokens(2)), finalValStr, 'int')
@@ -1178,7 +1315,11 @@ contains
 
                     case ("pop")
                         if (ntok /= 3) then
+                            
                             write(*,*) "Error: list pop|outVar|name"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         else
                             i = listLen(trim(tokens(2+1)))
                             if (i <= 0) then
@@ -1210,17 +1351,56 @@ contains
                     case ("clear")
                         if (ntok /= 2) then
                             write(*,*) "Error: list clear|name"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
                         else
                             call listClear(trim(tokens(2)))
                         end if
 
+        
         case default
             write(*,*) "Error: unknown list subcommand"
+            if (suffix=='!') then
+                        call exit(1)
+                    end if
         end select
     end if
+            case("sys")
+                if (ntok==1) then
+                    s1 = resolveToken(tokens(1))
+                    call system(s1)
+                else
+                    write(*,*) 'Error: sys requires 1 token: str'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+
+            case("cputime")
+                if(ntok==1) then
+                    s1= trim(tokens(1))
+
+                    call cpu_time(r)
+
+                    write(s2,'(F5.3)') r
+
+                    call setVar(trim(s1), trim(s2))
+
+
+                else 
+
+                    write(*,*) 'Error: cputime requires 1 token: var'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
 
             case default
                 write(*,'(A)') "Unknown command: "//trim(command)
+                if (suffix=='!') then
+                    call exit(1)
+                end if
             end select
     end subroutine execute_command
 

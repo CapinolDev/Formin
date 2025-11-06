@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.1.0
+**Version:** 1.1.1
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -185,6 +185,21 @@ goback#//#
 gets the users os (Either win or unix) and saves to a var
 [Example](Examples/getOs.fmn)
 
+#### sys#//#
+writes the input into the terminal/powershell of the computer running it.
+Example (unix): ``` sys#/'ps aux'/# ```
+
+#### cputime#//#
+gets the current cpu time since start of program and writes it in a variable.
+Example:
+```formin
+
+cputime#/startVar/#
+... code in between ...
+cputime#/endVar/#
+sub#/execTime|endVar|startVar/#
+spew#/Execution time:|execTime/#
+```
 ### Variables
 
 #### create#//#
@@ -398,9 +413,21 @@ go#/loop/#
 ```
 because of the ? suffix at the end of the add command, x is increased by 1 only once.
 
+
+#### !
+the **!** suffix makes it so that if a command fails, the program exits early.
+Example:
+```formin
+create#/x|1/#
+... some code between ...
+create#/x/#!
+```
+
+because of the ! suffix, instead of just printing a warning, the program exits.
+
 #### any other suffix (comment)
 If you use any suffix that's not declared here, the line acts as a comment.
-It's the only way to make comments without the interpreter shouting at you.
+It's the best way to make comments without the interpreter shouting at you.
 
 
 
