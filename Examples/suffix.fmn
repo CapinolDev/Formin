@@ -1,0 +1,7 @@
+create#/x|5/#
+spew#/x/#
+
+mark#/loop/#
+add#/x|x|1/#
+spew#/x/#
+go#/loop/#?

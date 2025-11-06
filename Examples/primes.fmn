@@ -9,9 +9,11 @@ create#/primeAmountLeft/#
 mark#/start/#
 color#/bright_magenta/#
 spew#/prime calculator/#
-color #/reset/#
+
+color#/bright_cyan/#
 
 ask#/How many numbers to check primeness of:|primeAmount/#
+color #/reset/#
 set#/primeAmountLeft|primeAmount/#
 
 mark#/loop/#
@@ -27,25 +29,19 @@ list#/len|listLen|primes/#
 add#/i|i|1/#
 ifgo#/i|<|listLen|_|isPrime/#
 mod#/modRes|u|primes[i]/#
-ifgo#/modRes|isnt|0|_|isntPrime/#
+ifgo#/modRes|isnt|0|_|loop/#
 go#/checkIfPrime/#
 bye
 
 
 
 mark#/isPrime/#
-color#/bright_green/#
 list#/push|primes|u/#
+color#/bright_green/#
 spew#/u|'is prime'/#
-color#/reset/#
 go#/loop/#
 bye
 
-mark#/isntPrime/#
-color#/bright_red/#
-spew#/u|'isnt prime.'/#
-color#/reset/#
-go#/loop/#
 
 mark#/end/#
 list#/len|primeCount|primes/#

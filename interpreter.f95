@@ -5,15 +5,14 @@ program interpreter
     integer :: ios
     integer :: nextFileUnit = 20
     integer :: fileUnit
-    character(len=256) :: fileName, tempLine
+    character(len=256) :: fileName, tempLine, verbose
     character(len=256) :: line
-    character(len=256) :: command, value, val
+    character(len=256) :: command, value
     integer :: pos1, pos2
     character(len=256) :: tokens(10)
     integer :: ntok
-    character(len=256) :: outAdd
-    integer :: a, b, sum, ios_local, sub, mult, div
-    character(len=256) :: s1, s2, s3, tempRead, localhelp
+    integer :: a, b, ios_local
+    character(len=256) :: s1, s2, s3, tempRead
     integer :: lineInt
     integer :: lineNumber
     character (len=1024) :: osSeperator, strSave
@@ -27,6 +26,9 @@ program interpreter
     integer :: jdx
     character(len=256), allocatable :: tmp(:)
     character(len=256) :: tmpStr
+    character(len=256) :: suffix
+    real :: timerStart, timerEnd
+    
 
     
     
@@ -48,8 +50,12 @@ program interpreter
     type(Marker), allocatable :: Markers(:)
     type(List), allocatable :: Lists(:)
     integer :: VarCount, MarkerCount, ListCount
-
-
+    character(len=256), allocatable :: fileLines(:)
+    integer, allocatable :: usedLines(:)
+    
+    integer :: numLines = 0
+    integer :: numLinesCalled = 0
+    logical :: foundLine = .false.
 
     call get_environment_variable("PATH", osSeperator)
     if (index(osSeperator, ";") > 0) then
@@ -60,7 +66,7 @@ program interpreter
         userOs = 'Unix'
     end if
 
-    version = '1.0.8'
+    version = '1.1.0'
 
     VarCount = 0
     MarkerCount = 0
@@ -68,14 +74,18 @@ program interpreter
     allocate(Vars(0))
     allocate(Markers(0))
     allocate(Lists(0))
+    allocate(usedLines(0))
     lineNumber = 0
 
 
 
 
     call get_command_argument(1, fileName)
+    call get_command_argument(2, verbose)
     if (trim(fileName) == 'ver') then
         write(*,*) "Version ", trim(version)
+
+    
 
     else if (len_trim(fileName) == 0) then
         write(*,'(A)') "Usage: ./formin <filename>"
@@ -87,13 +97,25 @@ if(trim(fileName) /= 'ver') then
         write(*,'(A)') "Error opening file!"
         stop
     end if
-    call init_random()
+    if(verbose=='loud') then
+        call cpu_time(timerStart)
+    end if
 
+
+
+    allocate(fileLines(0))
+    numLines = 0
     do
         read(1, '(A)', iostat=ios) line
         if (ios /= 0) exit
-        lineNumber = lineNumber + 1
+        numLines = numLines + 1
+        call extendArrayStr(fileLines, numLines)
+        fileLines(numLines) = trim(line)
+    end do
+    close(1)
 
+    do lineNumber = 1, numLines
+        line = fileLines(lineNumber)
         pos1 = index(line, '#/')
         pos2 = index(line, '/#')
         if (pos1 > 0 .and. pos2 > pos1) then
@@ -106,423 +128,60 @@ if(trim(fileName) /= 'ver') then
         end if
     end do
 
-    rewind(1)
     lineNumber = 0
 
     do
-        read(1, '(A)', iostat=ios) line
-        if (ios /= 0) exit
         lineNumber = lineNumber + 1
+        if (lineNumber > numLines) then
+            call cpu_time(timerEnd)
+            
+            if(verbose=='loud') then
+                print*, 'Execution time: ', timerEnd - timerStart
+            end if
+            exit
+        end if
+
+        line = fileLines(lineNumber)
+
+        if (trim(line) == 'bye') then
+            if(verbose=='loud') then
+                call cpu_time(timerEnd)
+                print*, 'Execution time: ', timerEnd - timerStart, 'ms'
+            end if
+            exit
+        end if
+        
 
         pos1 = index(line, '#/')
         pos2 = index(line, '/#')
 
-        if (trim(line) == 'bye') then
-            exit
-        else if (pos1 > 0 .and. pos2 > pos1) then
+        if (pos1 > 0 .and. pos2 > pos1) then
             command = adjustl(trim(line(1:pos1-1)))
             value   = adjustl(trim(line(pos1+2:pos2-1)))
-
+            suffix = adjustl(trim(line(pos2+2:pos2+3)))
             call split(value, "|", tokens, ntok)
-
-            select case (trim(command))
-
-            case ('spew')
-                if (ntok >= 1) then
-                    do i = 1, ntok
-                        write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))//' '
-                    end do
-                    write(*,*)
-                else
-                    write(*,'(A)') "Error: spew requires at least one token"
-                end if
-
-            case('spewmult')
-                if (ntok >= 1) then
-                    do i = 1, ntok
-                        write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))
-                    end do
-                    write(*,*)
-                else
-                    write(*,'(A)') "Error: spewmult requires at least one token"
-                end if
-
-            case('color')
-                call set_color(tokens(1))
-
-            case ("create")
-                if (ntok >= 2) then
-                    if (ntok == 3) then
-                        call createVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
-                    else
-                        call createVar(trim(tokens(1)), resolveToken(tokens(2)))
+            if (suffix=='') then
+                call execute_command(command, tokens, ntok, lineNumber)
+            end if
+            if (suffix=='?') then
+                foundLine = .false.
+                do i=1, numLinesCalled
+                    if(usedLines(i) == lineNumber) then
+                        foundLine = .true.
                     end if
-                else if (ntok == 1) then
-                    call createVar(trim(tokens(1)), '', 'str')
-                else
-                    write(*,'(A)') "Error: create requires 1-3 tokens: name|[value]|[type]"
+                end do
+                if (foundLine .eqv. .false.) then
+                    numLinesCalled = numLinesCalled + 1
+                    call extendArrayLines(usedLines, numLinesCalled)
+                    usedLines(numLinesCalled) = lineNumber
+                    call execute_command(command, tokens, ntok, lineNumber)
                 end if
-
-            case ("add")
-                call numeric_op(tokens, ntok, "+")
-
-            case ("sub")
-                call numeric_op(tokens, ntok, "-")
-            case ("mult")
-                call numeric_op(tokens, ntok, "*")
-            case("div")
-                call numeric_op(tokens, ntok, "/")
-            case ("mark")
-                if (ntok == 1) then
-                    call setMarker(lineNumber, trim(tokens(1)))
-                else
-                    write(*,*) "Error: mark requires exactly 1 token (name)"
-                end if
-
-            case ("go")
-                if (ntok == 1) then
-                    lineInt = getMarker(trim(tokens(1)))
-                    if (lineInt > 0) then
-                        call pushGo(lineNumber)
-                        rewind(1)
-                        lineNumber = 0
-                        do while (lineNumber < lineInt)
-                            read(1,'(A)',iostat=ios) line
-                            if (ios /= 0) exit
-                            lineNumber = lineNumber + 1
-                        end do
-                    else
-                        write(*,*) "Error: marker not found: ", trim(tokens(1))
-                    end if
-                else
-                    write(*,*) "Error: go requires exactly 1 token (name)"
-                end if
-
-            case("ifgo")
-                if (ntok == 5) then
-                    s1 = resolveToken(tokens(1))
-                    s2 = resolveToken(tokens(3))
-                    if (cmp_values(s1, s2, trim(tokens(2)))) then
-                        call jump_to(tokens(4))
-                    else
-                        call jump_to(tokens(5))
-                    end if
-                else
-                    write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker)"
-                end if
-
-            case ("ask")
-                if (ntok==2) then
-                    write(*,*) trim(resolveToken(tokens(1)))
-                    read(*,*) tempRead
-                    call setVar(trim(tokens(2)), trim(tempRead))
-                else
-                    print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
-                end if
-
-            case("clear")
-                call system(osClear)
-
-            case ("open")
-                if (ntok == 2) then
-                    s1 = trim(tokens(1))
-                    s2 = resolveToken(tokens(2))
-
-                    fileUnit = nextFileUnit
-                    nextFileUnit = nextFileUnit + 1
-
-                    open(unit=fileUnit, file=s2, status='old', action='read', iostat=ios)
-                    if (ios /= 0) then
-                        write(*,*) "Error: cannot open file ", trim(s2)
-                        cycle
-                    else
-                        call setVar(s1, trim(toString(fileUnit)), 'int')
-                    end if
-                else
-                    write(*,*) "Error: open requires 2 tokens: handleName|filePath"
-                end if
-
-            case ("read")
-                if (ntok == 2) then
-                    s1 = resolveToken(tokens(1))
-                    s2 = trim(tokens(2))
-
-                    read(s1, *, iostat=ios_local) fileUnit
-                    if (ios_local /= 0) then
-                        write(*,*) "Error: invalid file handle variable"
-                        cycle
-                    end if
-                    read(fileUnit, '(A)', iostat=ios_local) tempLine
-                    if (ios_local /= 0) then
-                        call setVar(trim(s2), "", 'str')
-                    else
-                        call setVar(trim(s2), trim(tempLine), 'str')
-                    end if
-                else
-                    write(*,*) "Error: read requires 2 tokens: handleName|lineVar"
-                end if
-
-            case ("close")
-                if (ntok == 1) then
-                    s1 = resolveToken(tokens(1))
-                    read(s1, *, iostat=ios_local) fileUnit
-                    if (ios_local /= 0) then
-                        write(*,*) "Error: invalid file handle variable"
-                    else
-                        close(fileUnit, iostat=ios_local)
-                        if (ios_local /= 0) then
-                            write(*,*) "Error closing file handle ", trim(s1)
-                        end if
-                    end if
-                else
-                    write(*,*) "Error: close requires 1 token: handleName"
-                end if
-
-            case("goback")
-                lineInt = popGo()
-                if (lineInt > 0) then
-                    rewind(1)
-                    lineNumber = 0
-                    do while (lineNumber < lineInt)
-                        read(1,'(A)',iostat=ios) line
-                        if (ios /= 0) exit
-                        lineNumber = lineNumber + 1
-                    end do
-                end if
-            case("str")
-                select case(trim(tokens(1)))
-
-                case("cat")
-                    if (ntok >= 4) then
-                        s1 = resolveToken(tokens(3))
-                        s2 = resolveToken(tokens(4))
-                        strSave = ''
-
-                        if (ntok == 5) then
-                            if (trim(lower(tokens(5))) == 'sp') then
-                                strSave = trim(s1) // ' ' // trim(s2)
-                            else
-                                strSave = trim(s1) // trim(s2)
-                            end if
-                        else
-                            strSave = trim(s1) // trim(s2)
-                        end if
-
-                        call setVar(trim(tokens(2)), trim(strSave), 'str')
-                    else
-                        write(*,*) "Error: cat requires at least 3 tokens: var|string1|string2|[space]"
-                    end if
-                case("rev")
-                    if(ntok==3) then
-                        s1 = resolveToken(tokens(3))
-                        strSave = ''
-                        strSave = trim(reverse(trim(s1)))
-                        call setVar(trim(tokens(2)),trim(strSave))
-                    else
-                        write(*,*) "Error: rev requires 2 tokens: var|string"
-                    end if
-                case("low")
-                    if(ntok==3) then
-                        s1 = resolveToken(tokens(3))
-                        strSave = ''
-                        strSave = trim(lower(trim(s1)))
-                        call setVar(trim(tokens(2)),trim(strSave))
-                    else
-                        write(*,*) "Error: low requires 2 tokens: var|string"
-                    end if
-                case("up")
-                    if(ntok==3) then
-                        s1 = resolveToken(tokens(3))
-                        strSave = ''
-                        strSave = trim(upper(trim(s1)))
-                        call setVar(trim(tokens(2)),trim(strSave))
-                    else
-                        write(*,*) "Error: up requires 2 tokens: var|string"
-                    end if
-                case("len")
-                    if(ntok==3) then
-                        s1 = trim(tokens(2))
-                        s2 = resolveToken(tokens(3))
-
-                        i = len_trim(s2)               
-                        write(strSave, '(I0)') i       
-
-                        call setVar(s1, trim(strSave), 'int')
-                    else
-                        write(*,*) "Error: len requires 2 tokens: var|string "
-                    end if
-                
-                end select
-            case("type")
-                if(ntok==2) then
-                    s1 = trim(tokens(1))
-                    s2 = trim(tokens(2))
-
-                    call setVar(s1, getVarType(trim(s2)), 'str') 
-                else
-                    write(*,*) "Error: type requires 2 tokens: varToStore|var"
-                end if
-            case("set")
-                if (ntok == 2) then
-                    call modifyVar(trim(tokens(1)), resolveToken(tokens(2)))
-                else if (ntok == 3) then
-                    call modifyVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
-                else                        
-                    write(*,*) "Error: set requires 2 or 3 tokens: var|value|[type]"
-                end if
-            case("mod")
-                if(ntok==3) then
-                    s1 = trim(tokens(1))
-                    s2 = resolveToken(tokens(2))
-                    s3 = resolveToken(tokens(3))
-                    read(s2,*) a
-                    read(s3,*) b
-
-                    finalValInt = modulo(a, b)
-                    write(finalValStr, '(I0)') finalValInt
-
-                    call setVar(s1, finalValStr, 'int')
-                else
-                    write(*,*) "Error: mod requires 3 tokens: var|value to mod|value to mod by"
-                end if
-            case("getos")
-                if(ntok==1) then
-                    s1 = trim(tokens(1))
-
-                    call setVar(s1, trim(userOs))
-                else 
-                    write(*,*) "Error: getos requires 1 token: var"
-                end if
-            case("randi")
-                if (ntok==2) then
-                    s1 = trim(tokens(1))
-                    s2 = resolveToken(tokens(2))
-
-                    read(s2,*) a
-                    call random_number(r)
-                    i = floor(r * a)
-                    write(s2, '(I0)') i
-                    call setVar(s1, s2)
-                
             
-                else 
-                    write(*,*) "Error: randi requires 2 tokens: var|multiplier"
-                end if
 
-            case("sqrt")
-                if (ntok==2) then
-                    s1 = trim(tokens(1))
-                    s2 = resolveToken(tokens(2))
-                    
-                    read(s2,*) r
-                    r = sqrt(r)
-                    write(s2, '(F5.3)') r
-                    call setVar(trim(s1),trim(s2))
-                else
-                    write(*,*) "Error: sqrt requires 2 tokens: var|number"
-                end if
-            case("list")
-                if (ntok < 2) then
-                    write(*,*) "Error: list requires a subcommand"
-                else
-                    select case (trim(lower(tokens(1))))
-                    case ("create","new")
-                        if (ntok /= 2) then
-                            write(*,*) "Error: list create|name"
-                        else
-                            call createList(trim(tokens(2)))
-                        end if
-
-                    case ("push")
-                        if (ntok /= 3) then
-                            write(*,*) "Error: list push|name|value"
-                        else
-                            call listPush(trim(tokens(2)), trim(resolveToken(tokens(3))))
-                        end if
-
-                    case ("get")
-                        if (ntok /= 4) then
-                            write(*,*) "Error: list get|outVar|name|index"
-                        else
-                            tmpStr = resolveToken(tokens(4))
-                            read(tmpStr, *, iostat=ios_local) i
-                            if (ios_local /= 0) then
-                                write(*,*) "Error: index must be integer"
-                            else
-                                call setVar(trim(tokens(2)), listGet(trim(tokens(3)), i), 'str')
-                            end if
-                        end if
-
-                    case ("set")
-                        if (ntok /= 4) then
-                            write(*,*) "Error: list set|name|index|value"
-                        else
-                            tmpStr = resolveToken(tokens(3))
-                            read(tmpStr, *, iostat=ios_local) i
-                            if (ios_local /= 0) then
-                                write(*,*) "Error: index must be integer"
-                            else
-                                call listSet(trim(tokens(2)), i, trim(resolveToken(tokens(4))))
-                            end if
-                        end if
-
-                    case ("len")
-                        if (ntok /= 3) then
-                            write(*,*) "Error: list len|outVar|name"
-                        else
-                            write(finalValStr,'(I0)') listLen(trim(tokens(3)))
-                            call setVar(trim(tokens(2)), finalValStr, 'int')
-                        end if
-
-                    case ("pop")
-                        if (ntok /= 3) then
-                            write(*,*) "Error: list pop|outVar|name"
-                        else
-                            i = listLen(trim(tokens(2+1)))
-                            if (i <= 0) then
-                                call setVar(trim(tokens(2)), "", 'str')
-                            else
-                                call setVar(trim(tokens(2)), listGet(trim(tokens(3)), i), 'str')
-                                call listSet(trim(tokens(3)), i, "")    
-                            
-                                block
-                                    
-                                    jdx = findList(trim(tokens(3)))
-                                    if (jdx > 0) then
-                                        if (i == 1) then
-                                            deallocate(Lists(jdx)%items)
-                                            allocate(Lists(jdx)%items(0))
-                                        else
-                                            
-                                            allocate(tmp(i-1))
-                                            tmp = Lists(jdx)%items(1:i-1)
-                                            call move_alloc(tmp, Lists(jdx)%items)
-                                        end if
-                                    end if
-                                end block
-                            end if
-                        end if
-
-                    case ("clear")
-                        if (ntok /= 2) then
-                            write(*,*) "Error: list clear|name"
-                        else
-                            call listClear(trim(tokens(2)))
-                        end if
-
-        case default
-            write(*,*) "Error: unknown list subcommand"
-        end select
-    end if
-
-            case default
-                write(*,'(A)') "Unknown command: "//trim(command)
-            end select
-        
+                
+            end if
         end if
     end do
-
-    close(1)
 end if
 contains
 
@@ -584,13 +243,8 @@ contains
         tgt = getMarker(trim(tokMarker))
         if (tgt > 0) then
             call pushGo(lineNumber)
-            rewind(1)
-            lineNumber = 0
-            do while (lineNumber < tgt)
-                read(1,'(A)',iostat=ios) line
-                if (ios /= 0) exit
-                lineNumber = lineNumber + 1
-            end do
+            lineNumber = tgt - 1
+
         else
             write(*,*) "Error: marker not found: ", trim(tokMarker)
         end if
@@ -612,6 +266,17 @@ contains
         call move_alloc(tmp, arr)
     end subroutine extendArrayVar
 
+    subroutine extendArrayLines(arr, newSize)
+        integer, allocatable, intent(inout) :: arr(:)
+        integer, intent(in) :: newSize
+        integer, allocatable :: tmp(:)
+
+        allocate(tmp(newSize))
+        if (size(arr)>0) tmp(1:size(arr)) = arr
+        call move_alloc(tmp,arr)
+
+    end subroutine extendArrayLines
+
     subroutine extendArrayMark(arr, newSize)
         type(Marker), allocatable, intent(inout) :: arr(:)
         integer, intent(in) :: newSize
@@ -631,6 +296,7 @@ contains
         if (size(arr) > 0) tmp(1:size(arr)) = arr
         call move_alloc(tmp,arr)
     end subroutine extendArrayList
+
     
     subroutine setVar(name, value, vartype)
         character(len=*), intent(in) :: name, value
@@ -1147,6 +813,416 @@ contains
         read(resolvedIdxStr, *, iostat=iostat_local) idx
         ok = (iostat_local == 0 .and. len_trim(base) > 0)
     end function try_parse_indexed_token
+
+    subroutine extendArrayStr(arr, newSize)
+        character(len=256), allocatable, intent(inout) :: arr(:)
+        integer, intent(in) :: newSize
+        character(len=256), allocatable :: tmp(:)
+        allocate(tmp(newSize))
+        if (size(arr) > 0) tmp(1:size(arr)) = arr
+        call move_alloc(tmp, arr)
+    end subroutine extendArrayStr
+
+
+    subroutine execute_command(command, tokens, ntok, lineNumber)
+        character(len=*), intent(in) :: command
+        character(len=256), intent(in) :: tokens(:)
+        integer, intent(inout) :: ntok, lineNumber
+
+            select case(trim(suffix))
+
+                case('?')
+                    
+
+
+                
+            end select
+
+           select case (trim(command))
+
+
+            case ('spew')
+                if (ntok >= 1) then
+                    do i = 1, ntok
+                        write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))//' '
+                    end do
+                    write(*,*)
+                else
+                    write(*,'(A)') "Error: spew requires at least one token"
+                end if
+
+            case('spewmult')
+                if (ntok >= 1) then
+                    do i = 1, ntok
+                        write(*,'(A)', advance='no') trim(resolveToken(tokens(i)))
+                    end do
+                    write(*,*)
+                else
+                    write(*,'(A)') "Error: spewmult requires at least one token"
+                end if
+
+            case('color')
+                call set_color(tokens(1))
+
+            case ("create")
+                if (ntok >= 2) then
+                    if (ntok == 3) then
+                        call createVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
+                    else
+                        call createVar(trim(tokens(1)), resolveToken(tokens(2)))
+                    end if
+                else if (ntok == 1) then
+                    call createVar(trim(tokens(1)), '', 'str')
+                else
+                    write(*,'(A)') "Error: create requires 1-3 tokens: name|[value]|[type]"
+                end if
+
+            case ("add")
+                call numeric_op(tokens, ntok, "+")
+
+            case ("sub")
+                call numeric_op(tokens, ntok, "-")
+            case ("mult")
+                call numeric_op(tokens, ntok, "*")
+            case("div")
+                call numeric_op(tokens, ntok, "/")
+                case ("mark")
+                if (ntok == 1) then
+                    call setMarker(lineNumber, trim(tokens(1)))
+                else
+                    write(*,*) "Error: mark requires exactly 1 token (name)"
+                end if
+
+            case ("go")
+                if (ntok == 1) then
+                    lineInt = getMarker(trim(tokens(1)))
+                    if (lineInt > 0) then
+                        call pushGo(lineNumber)
+                        lineNumber = lineint - 1
+                    else
+                        write(*,*) "Error: marker not found: ", trim(tokens(1))
+                    end if
+                else
+                    write(*,*) "Error: go requires exactly 1 token (name)"
+                end if
+
+            case("ifgo")
+                if (ntok == 5) then
+                    s1 = resolveToken(tokens(1))
+                    s2 = resolveToken(tokens(3))
+                    if (cmp_values(s1, s2, trim(tokens(2)))) then
+                        call jump_to(tokens(4))
+                    else
+                        call jump_to(tokens(5))
+                    end if
+                else
+                    write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker)"
+                end if
+
+            case ("ask")
+                if (ntok==2) then
+                    write(*,*) trim(resolveToken(tokens(1)))
+                    read(*,*) tempRead
+                    call setVar(trim(tokens(2)), trim(tempRead))
+                else
+                    print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
+                end if
+
+            case("clear")
+                call system(osClear)
+
+            case ("open")
+                if (ntok == 2) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+
+                    fileUnit = nextFileUnit
+                    nextFileUnit = nextFileUnit + 1
+
+                    open(unit=fileUnit, file=s2, status='old', action='read', iostat=ios)
+                    if (ios /= 0) then
+                        write(*,*) "Error: cannot open file ", trim(s2)
+                        return
+                    else
+                        call setVar(s1, trim(toString(fileUnit)), 'int')
+                    end if
+                else
+                    write(*,*) "Error: open requires 2 tokens: handleName|filePath"
+                end if
+
+            case ("read")
+                if (ntok == 2) then
+                    s1 = resolveToken(tokens(1))
+                    s2 = trim(tokens(2))
+
+                    read(s1, *, iostat=ios_local) fileUnit
+                    if (ios_local /= 0) then
+                        write(*,*) "Error: invalid file handle variable"
+                        return
+                    end if
+                    read(fileUnit, '(A)', iostat=ios_local) tempLine
+                    if (ios_local /= 0) then
+                        call setVar(trim(s2), "", 'str')
+                    else
+                        call setVar(trim(s2), trim(tempLine), 'str')
+                    end if
+                else
+                    write(*,*) "Error: read requires 2 tokens: handleName|lineVar"
+                end if
+
+            case ("close")
+                if (ntok == 1) then
+                    s1 = resolveToken(tokens(1))
+                    read(s1, *, iostat=ios_local) fileUnit
+                    if (ios_local /= 0) then
+                        write(*,*) "Error: invalid file handle variable"
+                    else
+                        close(fileUnit, iostat=ios_local)
+                        if (ios_local /= 0) then
+                            write(*,*) "Error closing file handle ", trim(s1)
+                        end if
+                    end if
+                else
+                    write(*,*) "Error: close requires 1 token: handleName"
+                end if
+
+            case("goback")
+                lineInt = popGo()
+                if (lineInt > 0) then
+                    lineNumber = lineInt - 1
+                end if
+            case("str")
+                select case(trim(tokens(1)))
+
+                case("cat")
+                    if (ntok >= 4) then
+                        s1 = resolveToken(tokens(3))
+                        s2 = resolveToken(tokens(4))
+                        strSave = ''
+
+                        if (ntok == 5) then
+                            if (trim(lower(tokens(5))) == 'sp') then
+                                strSave = trim(s1) // ' ' // trim(s2)
+                            else
+                                strSave = trim(s1) // trim(s2)
+                            end if
+                        else
+                            strSave = trim(s1) // trim(s2)
+                        end if
+
+                        call setVar(trim(tokens(2)), trim(strSave), 'str')
+                    else
+                        write(*,*) "Error: cat requires at least 3 tokens: var|string1|string2|[space]"
+                    end if
+                case("rev")
+                    if(ntok==3) then
+                        s1 = resolveToken(tokens(3))
+                        strSave = ''
+                        strSave = trim(reverse(trim(s1)))
+                        call setVar(trim(tokens(2)),trim(strSave))
+                    else
+                        write(*,*) "Error: rev requires 2 tokens: var|string"
+                    end if
+                case("low")
+                    if(ntok==3) then
+                        s1 = resolveToken(tokens(3))
+                        strSave = ''
+                        strSave = trim(lower(trim(s1)))
+                        call setVar(trim(tokens(2)),trim(strSave))
+                    else
+                        write(*,*) "Error: low requires 2 tokens: var|string"
+                    end if
+                case("up")
+                    if(ntok==3) then
+                        s1 = resolveToken(tokens(3))
+                        strSave = ''
+                        strSave = trim(upper(trim(s1)))
+                        call setVar(trim(tokens(2)),trim(strSave))
+                    else
+                        write(*,*) "Error: up requires 2 tokens: var|string"
+                    end if
+                case("len")
+                    if(ntok==3) then
+                        s1 = trim(tokens(2))
+                        s2 = resolveToken(tokens(3))
+
+                        i = len_trim(s2)               
+                        write(strSave, '(I0)') i       
+
+                        call setVar(s1, trim(strSave), 'int')
+                    else
+                        write(*,*) "Error: len requires 2 tokens: var|string "
+                    end if
+                
+                end select
+            case("type")
+                if(ntok==2) then
+                    s1 = trim(tokens(1))
+                    s2 = trim(tokens(2))
+
+                    call setVar(s1, getVarType(trim(s2)), 'str') 
+                else
+                    write(*,*) "Error: type requires 2 tokens: varToStore|var"
+                end if
+            case("set")
+                if (ntok == 2) then
+                    call modifyVar(trim(tokens(1)), resolveToken(tokens(2)))
+                else if (ntok == 3) then
+                    call modifyVar(trim(tokens(1)), resolveToken(tokens(2)), trim(tokens(3)))
+                else                        
+                    write(*,*) "Error: set requires 2 or 3 tokens: var|value|[type]"
+                end if
+            case("mod")
+                if(ntok==3) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+                    s3 = resolveToken(tokens(3))
+                    read(s2,*) a
+                    read(s3,*) b
+
+                    finalValInt = modulo(a, b)
+                    write(finalValStr, '(I0)') finalValInt
+
+                    call setVar(s1, finalValStr, 'int')
+                else
+                    write(*,*) "Error: mod requires 3 tokens: var|value to mod|value to mod by"
+                end if
+            case("getos")
+                if(ntok==1) then
+                    s1 = trim(tokens(1))
+
+                    call setVar(s1, trim(userOs))
+                else 
+                    write(*,*) "Error: getos requires 1 token: var"
+                end if
+            case("randi")
+                if (ntok==2) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+
+                    read(s2,*) a
+                    call random_number(r)
+                    i = floor(r * a)
+                    write(s2, '(I0)') i
+                    call setVar(s1, s2)
+                
+            
+                else 
+                    write(*,*) "Error: randi requires 2 tokens: var|multiplier"
+                end if
+
+            case("sqrt")
+                if (ntok==2) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken(tokens(2))
+                    
+                    read(s2,*) r
+                    r = sqrt(r)
+                    write(s2, '(F5.3)') r
+                    call setVar(trim(s1),trim(s2))
+                else
+                    write(*,*) "Error: sqrt requires 2 tokens: var|number"
+                end if
+            case("list")
+                if (ntok < 2) then
+                    write(*,*) "Error: list requires a subcommand"
+                else
+                    select case (trim(lower(tokens(1))))
+                    case ("create","new")
+                        if (ntok /= 2) then
+                            write(*,*) "Error: list create|name"
+                        else
+                            call createList(trim(tokens(2)))
+                        end if
+
+                    case ("push")
+                        if (ntok /= 3) then
+                            write(*,*) "Error: list push|name|value"
+                        else
+                            call listPush(trim(tokens(2)), trim(resolveToken(tokens(3))))
+                        end if
+
+                    case ("get")
+                        if (ntok /= 4) then
+                            write(*,*) "Error: list get|outVar|name|index"
+                        else
+                            tmpStr = resolveToken(tokens(4))
+                            read(tmpStr, *, iostat=ios_local) i
+                            if (ios_local /= 0) then
+                                write(*,*) "Error: index must be integer"
+                            else
+                                call setVar(trim(tokens(2)), listGet(trim(tokens(3)), i), 'str')
+                            end if
+                        end if
+
+                    case ("set")
+                        if (ntok /= 4) then
+                            write(*,*) "Error: list set|name|index|value"
+                        else
+                            tmpStr = resolveToken(tokens(3))
+                            read(tmpStr, *, iostat=ios_local) i
+                            if (ios_local /= 0) then
+                                write(*,*) "Error: index must be integer"
+                            else
+                                call listSet(trim(tokens(2)), i, trim(resolveToken(tokens(4))))
+                            end if
+                        end if
+
+                    case ("len")
+                        if (ntok /= 3) then
+                            write(*,*) "Error: list len|outVar|name"
+                        else
+                            write(finalValStr,'(I0)') listLen(trim(tokens(3)))
+                            call setVar(trim(tokens(2)), finalValStr, 'int')
+                        end if
+
+                    case ("pop")
+                        if (ntok /= 3) then
+                            write(*,*) "Error: list pop|outVar|name"
+                        else
+                            i = listLen(trim(tokens(2+1)))
+                            if (i <= 0) then
+                                call setVar(trim(tokens(2)), "", 'str')
+                            else
+                                call setVar(trim(tokens(2)), listGet(trim(tokens(3)), i), 'str')
+                                call listSet(trim(tokens(3)), i, "")    
+                            
+                                block
+                                    
+                                    jdx = findList(trim(tokens(3)))
+                                    if (jdx > 0) then
+                                        if (i == 1) then
+                                            deallocate(Lists(jdx)%items)
+                                            allocate(Lists(jdx)%items(0))
+                                        else
+                                            
+                                            allocate(tmp(i-1))
+                                            tmp = Lists(jdx)%items(1:i-1)
+                                            call move_alloc(tmp, Lists(jdx)%items)
+                                        end if
+                                    end if
+                                end block
+                            end if
+                        end if
+
+                    
+
+                    case ("clear")
+                        if (ntok /= 2) then
+                            write(*,*) "Error: list clear|name"
+                        else
+                            call listClear(trim(tokens(2)))
+                        end if
+
+        case default
+            write(*,*) "Error: unknown list subcommand"
+        end select
+    end if
+
+            case default
+                write(*,'(A)') "Unknown command: "//trim(command)
+            end select
+    end subroutine execute_command
 
 
 end program interpreter

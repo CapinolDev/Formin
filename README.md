@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - combining simplicity, structure, and creativity.
 
-**Version:** 1.0.8
+**Version:** 1.1.0
 **Author:** Capinol  
 **Interpreter:** Fortran (interpreter.f95)
 
@@ -34,6 +34,7 @@ spew#/greeting/#
     - [Linux/MacOS](#linux---macos)
     - [Windows](#windows-using-powershell-or-cmd)
     - [Licenses](#license)
+- [Command line arguments](#command-line-arguments)
 - [Quick start](#quick-start)
 - [Examples](#examples)
 - [Commands](#commands)
@@ -44,6 +45,7 @@ spew#/greeting/#
   - [File Handling](#file-handling)
   - [Strings](#strings)
   - [Lists](#lists)
+  - [Suffixes](#suffixes)
 - [Related links](#related-links)
 
 ---
@@ -52,7 +54,6 @@ spew#/greeting/#
 
 Formin is distributed as a **stand-alone binary** - no installation or dependencies required.  
 Just download it from the [Releases page](https://github.com/CapinolDev/formin/releases) and run it.
-You can get your version of fortran by using ```formin ver```
 
 ---
 
@@ -79,6 +80,17 @@ formin examples/hello.formin
 If Windows blocks the binary, right-click → Properties → check Unblock, or run PowerShell as Administrator.
 
 ---
+## Command line arguments
+### ver
+prints the version of installed formin.
+Example: ``` formin ver ```
+### filename
+executes a file.
+Example: ``` formin main.fmn ```
+### loud
+prints the time it took the program to finish at the end, in miliseconds.
+Example: ``` formin main.fmn loud ```
+
 ## Quick Start
 
 1. Create a new file called `hello.fmn`:
@@ -107,6 +119,8 @@ Logo © Capinol 2025, licensed under CC BY-SA 4.0.
 ---
 
 ## Commands:
+
+If you want to put comments, see [this](#any-other-suffix-comment)
 
 ### Format
 #### spew#//# 
@@ -361,6 +375,33 @@ Example above removes the last item of the list 'names' and stores it in a var '
 
 clear: clears a list.
 Example: ``` list#/clear|names/# ```
+
+### Suffixes
+Suffixes are special characters at the end of a command, to change the way it behaves.
+They are 1 character long
+Example: ``` spew#/'Hello world!'/#*suffix* ```
+Example above shows the location of suffixes
+#### no suffix
+if you don't use a suffix, nothing about the command changes (wow).
+
+#### ?
+the **?** suffix makes it so that the command can only be executed once.
+Example:
+```formin
+create#/x|1/#
+spew#/x/#
+
+mark#/loop/#
+add#/x|x|1/#?
+spew#/x/#
+go#/loop/#
+```
+because of the ? suffix at the end of the add command, x is increased by 1 only once.
+
+#### any other suffix (comment)
+If you use any suffix that's not declared here, the line acts as a comment.
+It's the only way to make comments without the interpreter shouting at you.
+
 
 
 --- 
