@@ -1,0 +1,7 @@
+create#/x|0/#
+mark#/loop/#
+add#/x|x|1/#
+ifgo#/x|<|500000|loop|end/#
+mark#/end/#
+spew#/'done'/#
+bye

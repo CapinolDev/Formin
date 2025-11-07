@@ -4,7 +4,7 @@ create#/i|0/#
 create#/u|1/#
 create#/listLen/#
 create#/primeAmountLeft/#
-
+create#/maxCheck|0/#
 
 mark#/start/#
 color#/bright_magenta/#
@@ -13,6 +13,7 @@ spew#/prime calculator/#
 color#/bright_cyan/#
 
 ask#/How many numbers to check primeness of:|primeAmount/#
+list#/reserve|primes|u/#
 color #/reset/#
 set#/primeAmountLeft|primeAmount/#
 
@@ -28,17 +29,20 @@ mark#/checkIfPrime/#
 list#/len|listLen|primes/#
 add#/i|i|1/#
 ifgo#/i|<|listLen|_|isPrime/#
+set#/maxCheck|primes[i]/#
+mult#/maxCheck|maxCheck|maxCheck/#
 mod#/modRes|u|primes[i]/#
 ifgo#/modRes|isnt|0|_|loop/#
+ifgo#/maxCheck|<|u|_|isPrime/#
 go#/checkIfPrime/#
+
+
 bye
 
 
 
 mark#/isPrime/#
 list#/push|primes|u/#
-color#/bright_green/#
-spew#/u|'is prime'/#
 go#/loop/#
 bye
 
