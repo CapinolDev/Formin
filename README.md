@@ -7,7 +7,7 @@
 **Author:** Capinol  
 **Toolchain:** `forminc` (compiler) + `forminvm` (virtual machine)
 
-> Looking for the classic interpreter docs? See [`README_interpreter.md`](README_interpreter.md) in this folder.
+> Looking for the classic interpreter docs? See [`README_interpreter.md`](Info/README_interpreter.md).
 
 ---
 
