@@ -1,0 +1,7 @@
+create#/a|0/#
+mark#/loop/#
+add#/a|a|1/#
+ifgo#/a|<|5|loop|end/#
+mark#/end/#
+spew#/a/#
+bye

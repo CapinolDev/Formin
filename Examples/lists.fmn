@@ -1,8 +1,54 @@
-list#/create|names/#
-list#/push|names|'Bob'/#
-list#/push|names|'Alice'/#
-list#/pop|lastName|names/#
-spew#/lastName/#
-spew#/names[1]/#
+ask#/'How many numbers to check?'|N/#             
+list#/create|isPrime/#           
+create#/i|0/#
+create#/p|1/#
+create#/count|0/#
+create#/num|1/#
 
+mark#/initLoop/#
+add#/i|i|1/#
+list#/push|isPrime|'1'/#
+ifgo#/i|<|N|initLoop|sieve/#
+bye
+
+mark#/sieve/#
+
+mark#/outer/#
+add#/p|p|1/#
+mult#/pSqr|p|p/#
+ifgo#/pSqr|>|N|done|checkP/#   
+bye
+
+mark#/checkP/#
+ifgo#/isPrime[p]|is|'0'|outer|markMultiples/#  
+bye
+
+mark#/markMultiples/#
+set#/i|p/#
+mult#/i|p|p/#                 
+mark#/inner/#
+ifgo#/i|>|N|outer|_/#         
+list#/set|isPrime|i|'0'/#     
+add#/i|i|p/#                   
+go#/inner/#
+bye
+
+mark#/done/#
+mark#/printLoop/#
+add#/num|num|1/#
+ifgo#/num|>|N|end|checkPrint/#
+bye
+
+mark#/checkPrint/#
+ifgo#/isPrime[num]|is|'1'|printPrime|printLoop/#
+
+mark#/printPrime/#
+spew#/num|'is prime.'/#
+add#/count|count|1/#
+go#/printLoop/#
+bye
+
+mark#/end/#
+spew#/'Primes found:'|count/#
+bye
 

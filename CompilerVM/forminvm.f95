@@ -1,26 +1,21 @@
-program interpreter
-    use terminal_colors
+program forminvm
     use formin_lists
+    use formin_opcodes
 
     implicit none
-
-    integer, parameter :: OP_NONE=0, OP_SPEW=1, OP_SPEWMULT=2, OP_COLOR=3, OP_CREATE=4, &
-                      OP_ADD=5, OP_SUB=6, OP_MULT=7, OP_DIV=8, OP_MARK=9, OP_GO=10,  &
-                      OP_IFGO=11, OP_ASK=12, OP_CLEAR=13, OP_OPEN=14, OP_READ=15,    &
-                      OP_CLOSE=16, OP_GOBACK=17, OP_STR=18, OP_TYPE=19, OP_SET=20,   &
-                      OP_MOD=21, OP_GETOS=22, OP_RANDI=23, OP_SQRT=24, OP_LIST=25,   &
-                      OP_SYS=26, OP_CPUTIME=27
 
     character(len=5) :: version
     integer :: ios
     integer :: nextFileUnit = 20
     integer :: fileUnit
     character(len=256) :: fileName, tempLine, verbose
-    character(len=256) :: line
-    character(len=256) :: command, value
-    integer :: pos1, pos2
-    character(len=256) :: tokens(10)
-    integer :: ntok
+    type :: Instr
+        sequence
+        integer :: op
+        integer :: ntok
+        character(len=256) :: tokens(10)
+        character(len=1) :: suffix
+    end type Instr
     integer :: a, b, ios_local
     character(len=256) :: s1, s2, s3, tempRead
     integer :: lineInt
@@ -33,7 +28,7 @@ program interpreter
     character(len=256) :: finalValStr
     character(len=256) :: userOs
     real :: r
-    integer :: jdx
+    integer :: jdx, intVal, subId
     character(len=256), allocatable :: tmp(:)
     character(len=256) :: tmpStr
     character(len=256) :: suffix
@@ -53,23 +48,38 @@ program interpreter
         character(len=256) :: name
     end type Marker
     type :: ParsedLine
-        character(len=64) :: command
         character(len=256) :: tokens(10)
+        integer :: tokenInternIds(10) = 0
         integer :: ntok
         character(len=4) :: suffix
         integer :: listIndex = -1
         integer :: cmdId = OP_NONE
+        integer :: jumpA = 0
+        integer :: jumpB = 0
     end type ParsedLine
     
 
 
+    integer, parameter :: VAR_HASH_SIZE = 16384
+    integer, parameter :: INTERN_HASH_SIZE = 65536
+
     type(Var), allocatable    :: Vars(:)
     type(Marker), allocatable :: Markers(:)
     type(ParsedLine), allocatable :: Parsed(:)
+    type(Instr), allocatable :: Program(:)
     type(List), allocatable :: Lists(:)
     integer :: VarCount, MarkerCount, ListCount
-    character(len=256), allocatable :: fileLines(:)
+    integer :: VarCapacity
     integer, allocatable :: usedLines(:)
+    integer, allocatable :: varHash(:)
+    character(len=256), allocatable :: internValues(:)
+    integer, allocatable :: internHash(:)
+    integer :: internCount = 0
+    integer :: internCapacity = 0
+    integer :: INTERN_LIST_CREATE, INTERN_LIST_NEW, INTERN_LIST_PUSH, INTERN_LIST_GET
+    integer :: INTERN_LIST_SET, INTERN_LIST_LEN, INTERN_LIST_POP, INTERN_LIST_CLEAR
+    integer :: INTERN_LIST_RESERVE
+    integer :: INTERN_STR_CAT, INTERN_STR_REV, INTERN_STR_LOW, INTERN_STR_UP, INTERN_STR_LEN
     
 
     
@@ -92,9 +102,27 @@ program interpreter
     MarkerCount = 0
     ListCount = 0
     allocate(Vars(0))
+    VarCapacity = 0
     allocate(Markers(0))
     allocate(Lists(0))
     allocate(usedLines(0))
+    allocate(varHash(VAR_HASH_SIZE))
+    varHash = 0
+    call init_intern_pool()
+    INTERN_LIST_CREATE = intern_string("create")
+    INTERN_LIST_NEW = intern_string("new")
+    INTERN_LIST_PUSH = intern_string("push")
+    INTERN_LIST_GET = intern_string("get")
+    INTERN_LIST_SET = intern_string("set")
+    INTERN_LIST_LEN = intern_string("len")
+    INTERN_LIST_POP = intern_string("pop")
+    INTERN_LIST_CLEAR = intern_string("clear")
+    INTERN_LIST_RESERVE = intern_string("reserve")
+    INTERN_STR_CAT = intern_string("cat")
+    INTERN_STR_REV = intern_string("rev")
+    INTERN_STR_LOW = intern_string("low")
+    INTERN_STR_UP  = intern_string("up")
+    INTERN_STR_LEN = intern_string("len")
     lineNumber = 0
 
 
@@ -102,105 +130,82 @@ program interpreter
 
     call get_command_argument(1, fileName)
     call get_command_argument(2, verbose)
-    if (trim(fileName) == 'ver') then
-        write(*,*) "Version ", trim(version)
-
-    
-
-    else if (len_trim(fileName) == 0) then
-        write(*,'(A)') "Usage: ./formin <filename>"
+    if (len_trim(fileName) == 0) then
+        write(*,'(A)') "Usage: forminvm <program.fbc>"
         stop
     end if
-if(trim(fileName) /= 'ver') then
-    open(unit=1, file=trim(fileName), action='read', status='old', iostat=ios)
+    if (trim(fileName) == 'ver') then
+        write(*,*) "Version ", trim(version)
+        stop
+    end if
+
+    open(unit=20, file=trim(fileName), form='unformatted', access='stream', iostat=ios)
     if (ios /= 0) then
         write(*,'(A)') "Error opening file!"
         stop
     end if
-    if(verbose=='loud') then
+    read(20) numLines
+    allocate(Program(numLines))
+    read(20) Program
+    close(20)
+
+    if (verbose == 'loud') then
         call cpu_time(timerStart)
     end if
-
-
-
-    allocate(fileLines(0))
-    numLines = 0
-    do
-        read(1, '(A)', iostat=ios) line
-        if (ios /= 0) exit
-        numLines = numLines + 1
-        call extendArrayStr(fileLines, numLines)
-        fileLines(numLines) = trim(line)
-    end do
-    close(1)
 
     allocate(Parsed(numLines))
 
     do lineNumber = 1, numLines
-        line = trim(fileLines(lineNumber))
-
-        Parsed(lineNumber)%command = ""
-        Parsed(lineNumber)%suffix  = ""
-        Parsed(lineNumber)%ntok    = 0
-        Parsed(lineNumber)%tokens  = ""
+        Parsed(lineNumber)%tokens    = Program(lineNumber)%tokens
+        Parsed(lineNumber)%tokenInternIds = 0
+        Parsed(lineNumber)%ntok      = Program(lineNumber)%ntok
+        Parsed(lineNumber)%suffix    = Program(lineNumber)%suffix
         Parsed(lineNumber)%listIndex = -1
-        Parsed(lineNumber)%cmdId   = OP_NONE
-
-        pos1 = index(line, "#/")
-        pos2 = index(line, "/#")
-
-        if (pos1 > 0 .and. pos2 > pos1) then
-            Parsed(lineNumber)%command = adjustl(trim(line(1:pos1-1)))
-            value = adjustl(trim(line(pos1+2:pos2-1)))
-            Parsed(lineNumber)%suffix = adjustl(trim(line(pos2+2:pos2+3)))
-            call split(value, "|", Parsed(lineNumber)%tokens, Parsed(lineNumber)%ntok)
+        Parsed(lineNumber)%cmdId     = Program(lineNumber)%op
+        if (Parsed(lineNumber)%ntok > 0) then
             do i = 1, Parsed(lineNumber)%ntok
-                Parsed(lineNumber)%tokens(i) = trim(Parsed(lineNumber)%tokens(i))
+                Parsed(lineNumber)%tokenInternIds(i) = intern_string(Parsed(lineNumber)%tokens(i))
             end do
-        end if
-
-        select case (trim(Parsed(lineNumber)%command))
-            case ('spew');      Parsed(lineNumber)%cmdId = OP_SPEW
-            case ('spewmult');  Parsed(lineNumber)%cmdId = OP_SPEWMULT
-            case ('color');     Parsed(lineNumber)%cmdId = OP_COLOR
-            case ('create');    Parsed(lineNumber)%cmdId = OP_CREATE
-            case ('add');       Parsed(lineNumber)%cmdId = OP_ADD
-            case ('sub');       Parsed(lineNumber)%cmdId = OP_SUB
-            case ('mult');      Parsed(lineNumber)%cmdId = OP_MULT
-            case ('div');       Parsed(lineNumber)%cmdId = OP_DIV
-            case ('mark');      Parsed(lineNumber)%cmdId = OP_MARK
-            case ('go');        Parsed(lineNumber)%cmdId = OP_GO
-            case ('ifgo');      Parsed(lineNumber)%cmdId = OP_IFGO
-            case ('ask');       Parsed(lineNumber)%cmdId = OP_ASK
-            case ('clear');     Parsed(lineNumber)%cmdId = OP_CLEAR
-            case ('open');      Parsed(lineNumber)%cmdId = OP_OPEN
-            case ('read');      Parsed(lineNumber)%cmdId = OP_READ
-            case ('close');     Parsed(lineNumber)%cmdId = OP_CLOSE
-            case ('goback');    Parsed(lineNumber)%cmdId = OP_GOBACK
-            case ('str');       Parsed(lineNumber)%cmdId = OP_STR
-            case ('type');      Parsed(lineNumber)%cmdId = OP_TYPE
-            case ('set');       Parsed(lineNumber)%cmdId = OP_SET
-            case ('mod');       Parsed(lineNumber)%cmdId = OP_MOD
-            case ('getos');     Parsed(lineNumber)%cmdId = OP_GETOS
-            case ('randi');     Parsed(lineNumber)%cmdId = OP_RANDI
-            case ('sqrt');      Parsed(lineNumber)%cmdId = OP_SQRT
-            case ('list');      Parsed(lineNumber)%cmdId = OP_LIST
-            case ('sys');       Parsed(lineNumber)%cmdId = OP_SYS
-            case ('cputime');   Parsed(lineNumber)%cmdId = OP_CPUTIME
-            case default;       Parsed(lineNumber)%cmdId = OP_NONE
-        end select
-
-        if (Parsed(lineNumber)%command == 'list') then
-            if (Parsed(lineNumber)%ntok >= 2) then
-                Parsed(lineNumber)%listIndex = findList(Lists, ListCount, trim(Parsed(lineNumber)%tokens(2)))
-            end if
         end if
     end do
 
     do lineNumber = 1, numLines
-        if (trim(Parsed(lineNumber)%command) == 'mark' .and. Parsed(lineNumber)%ntok == 1) then
+        if (Parsed(lineNumber)%cmdId == OP_MARK .and. Parsed(lineNumber)%ntok == 1) then
             call setMarker(lineNumber, trim(Parsed(lineNumber)%tokens(1)))
         end if
+    end do
+
+    do lineNumber = 1, numLines
+        select case (Parsed(lineNumber)%cmdId)
+        case (OP_GO)
+            if (Parsed(lineNumber)%ntok >= 1) then
+                Parsed(lineNumber)%jumpA = getMarker(trim(Parsed(lineNumber)%tokens(1)))
+                if (Parsed(lineNumber)%jumpA <= 0) then
+                    write(*,*) "Warning: unknown marker in GO: ", trim(Parsed(lineNumber)%tokens(1))
+                end if
+            end if
+        case (OP_IFGO)
+            if (Parsed(lineNumber)%ntok >= 5) then
+                if (trim(Parsed(lineNumber)%tokens(4)) /= '_') then
+                    Parsed(lineNumber)%jumpA = getMarker(trim(Parsed(lineNumber)%tokens(4)))
+                    if (Parsed(lineNumber)%jumpA <= 0) then
+                        write(*,*) "Warning: unknown marker in IFGO true branch: ", trim(Parsed(lineNumber)%tokens(4))
+                    end if
+                else
+                    Parsed(lineNumber)%jumpA = 0
+                end if
+                if (trim(Parsed(lineNumber)%tokens(5)) /= '_') then
+                    Parsed(lineNumber)%jumpB = getMarker(trim(Parsed(lineNumber)%tokens(5)))
+                    if (Parsed(lineNumber)%jumpB <= 0) then
+                        write(*,*) "Warning: unknown marker in IFGO false branch: ", trim(Parsed(lineNumber)%tokens(5))
+                    end if
+                else
+                    Parsed(lineNumber)%jumpB = 0
+                end if
+            end if
+        case default
+            cycle
+        end select
     end do
 
     lineNumber = 0
@@ -212,19 +217,11 @@ if(trim(fileName) /= 'ver') then
             exit
         end if
 
-        if (trim(fileLines(lineNumber)) == 'bye') then
-            if (verbose=='loud') then
-                call cpu_time(timerEnd)
-                print*, 'Execution time: ', timerEnd - timerStart, 's'
-            end if
-            exit
-        end if
-
-        if (len_trim(Parsed(lineNumber)%command) > 0) then
+        if (Parsed(lineNumber)%cmdId /= OP_NONE) then
             suffix = Parsed(lineNumber)%suffix
-            if (suffix == '' .or. suffix == '!') then
+            if (trim(suffix) == '' .or. trim(suffix) == '!') then
                 call execute_command(Parsed(lineNumber)%cmdId, Parsed(lineNumber)%tokens, Parsed(lineNumber)%ntok, lineNumber)
-            else if (suffix == '?') then
+            else if (trim(suffix) == '?') then
                 foundLine = .false.
                 do i = 1, numLinesCalled
                     if (usedLines(i) == lineNumber) then
@@ -240,7 +237,6 @@ if(trim(fileName) /= 'ver') then
             end if
         end if
     end do
-end if
 contains
 
     subroutine numeric_op(tokens, ntok, op)
@@ -248,9 +244,6 @@ contains
         integer, intent(in) :: ntok
         character(len=*), intent(in) :: op
         real(kind=8) :: a, b, res
-        integer :: i, ios1, ios2
-        logical :: isNumA, isNumB
-        character(len=256) :: lhs, rhs, tmp
 
         if (ntok /= 3) then
             write(*,'(A)') "Error: arithmetic requires 3 tokens: name|lhs|rhs"
@@ -258,51 +251,16 @@ contains
             return
         end if
 
-        lhs = trim(tokens(2))
-        rhs = trim(tokens(3))
-
-        isNumA = .false.; isNumB = .false.; a = 0d0; b = 0d0
-
-        do i = 1, VarCount
-            if (lhs == Vars(i)%name .and. Vars(i)%isNum) then
-                a = Vars(i)%numVal
-                isNumA = .true.
-                exit
-            end if
-        end do
-
-        do i = 1, VarCount
-            if (rhs == Vars(i)%name .and. Vars(i)%isNum) then
-                b = Vars(i)%numVal
-                isNumB = .true.
-                exit
-            end if
-        end do
-
-        if (.not.isNumA) then
-            read(lhs,*,iostat=ios1) a
-            if (ios1 /= 0) then
-                tmp = resolveToken_fast(tokens(2))
-                read(tmp,*,iostat=ios1) a
-                if (ios1 /= 0) then
-                    write(*,'(A)') "Error: non-numeric lhs"
-                    if (suffix=='!') call exit(1)
-                    return
-                end if
-            end if
+        if (.not. getNumericValueFast(tokens(2), a)) then
+            write(*,'(A)') "Error: non-numeric lhs"
+            if (suffix=='!') call exit(1)
+            return
         end if
 
-        if (.not.isNumB) then
-            read(rhs,*,iostat=ios2) b
-            if (ios2 /= 0) then
-                tmp = resolveToken_fast(tokens(3))
-                read(tmp,*,iostat=ios2) b
-                if (ios2 /= 0) then
-                    write(*,'(A)') "Error: non-numeric rhs"
-                    if (suffix=='!') call exit(1)
-                    return
-                end if
-            end if
+        if (.not. getNumericValueFast(tokens(3), b)) then
+            write(*,'(A)') "Error: non-numeric rhs"
+            if (suffix=='!') call exit(1)
+            return
         end if
 
         select case(op)
@@ -318,7 +276,7 @@ contains
             res = a / b
         end select
 
-        call setVar(trim(tokens(1)), trim(toStringReal(res)), 'float')
+        call setVarNumericFast(trim(tokens(1)), res)
     end subroutine numeric_op
 
     subroutine jump_to(tokMarker)
@@ -338,6 +296,19 @@ contains
         end if
     end subroutine jump_to
 
+    subroutine jump_to_pc(tgt)
+        integer, intent(in) :: tgt
+        if (tgt <= 0) then
+            write(*,*) "Error: invalid jump target"
+            if (suffix=='!') then
+                call exit(1)
+            end if
+            return
+        end if
+        call pushGo(lineNumber)
+        lineNumber = tgt - 1
+    end subroutine jump_to_pc
+
     function toString(i) result(s)
         integer, intent(in) :: i
         character(len=256) :: s
@@ -348,30 +319,68 @@ contains
         type(Var), allocatable, intent(inout) :: arr(:)
         integer, intent(in) :: newSize
         type(Var), allocatable :: tmp(:)
+        integer :: newCap, copyCount, curCap
 
-        allocate(tmp(newSize))
-        if (size(arr) > 0) tmp(1:size(arr)) = arr
+        if (allocated(arr)) then
+            curCap = size(arr)
+        else
+            curCap = 0
+        end if
+
+        if (newSize <= VarCapacity) return
+        newCap = max(8, VarCapacity)
+        if (newCap <= 0) newCap = 8
+        do while (newCap < newSize)
+            newCap = newCap * 2
+        end do
+        allocate(tmp(newCap))
+        copyCount = min(curCap, max(VarCount-1, 0))
+        if (copyCount > 0) tmp(1:copyCount) = arr(1:copyCount)
         call move_alloc(tmp, arr)
+        VarCapacity = newCap
     end subroutine extendArrayVar
 
     subroutine extendArrayLines(arr, newSize)
         integer, allocatable, intent(inout) :: arr(:)
         integer, intent(in) :: newSize
         integer, allocatable :: tmp(:)
+        integer :: curCap, newCap
 
-        allocate(tmp(newSize))
-        if (size(arr)>0) tmp(1:size(arr)) = arr
+        if (allocated(arr)) then
+            curCap = size(arr)
+        else
+            curCap = 0
+        end if
+        if (newSize <= curCap) return
+        newCap = max(8, curCap)
+        if (newCap <= 0) newCap = 8
+        do while (newCap < newSize)
+            newCap = newCap * 2
+        end do
+        allocate(tmp(newCap))
+        if (curCap > 0) tmp(1:curCap) = arr(1:curCap)
         call move_alloc(tmp,arr)
-
     end subroutine extendArrayLines
 
     subroutine extendArrayMark(arr, newSize)
         type(Marker), allocatable, intent(inout) :: arr(:)
         integer, intent(in) :: newSize
         type(Marker), allocatable :: tmp(:)
+        integer :: curCap, newCap
 
-        allocate(tmp(newSize))
-        if (size(arr) > 0) tmp(1:size(arr)) = arr
+        if (allocated(arr)) then
+            curCap = size(arr)
+        else
+            curCap = 0
+        end if
+        if (newSize <= curCap) return
+        newCap = max(8, curCap)
+        if (newCap <= 0) newCap = 8
+        do while (newCap < newSize)
+            newCap = newCap * 2
+        end do
+        allocate(tmp(newCap))
+        if (curCap > 0) tmp(1:curCap) = arr(1:curCap)
         call move_alloc(tmp, arr)
     end subroutine extendArrayMark
 
@@ -379,9 +388,21 @@ contains
         type(List), allocatable, intent(inout) :: arr(:)
         integer, intent(in) :: newSize
         type(List), allocatable :: tmp(:)
+        integer :: curCap, newCap
 
-        allocate(tmp(newSize))
-        if (size(arr) > 0) tmp(1:size(arr)) = arr
+        if (allocated(arr)) then
+            curCap = size(arr)
+        else
+            curCap = 0
+        end if
+        if (newSize <= curCap) return
+        newCap = max(8, curCap)
+        if (newCap <= 0) newCap = 8
+        do while (newCap < newSize)
+            newCap = newCap * 2
+        end do
+        allocate(tmp(newCap))
+        if (curCap > 0) tmp(1:curCap) = arr(1:curCap)
         call move_alloc(tmp,arr)
     end subroutine extendArrayList
 
@@ -389,7 +410,7 @@ contains
     subroutine setVar(name, value, vartype)
         character(len=*), intent(in) :: name, value
         character(len=*), intent(in), optional :: vartype
-        integer :: i, idx, iosn
+        integer :: idx, iosn
         real(kind=8) :: tmp
         character(len=8) :: typeToSet
         integer, save :: cacheCount = 0
@@ -414,26 +435,27 @@ contains
             else
                 Vars(idx)%isNum  = .false.
             end if
+            call insertVarHash(trim(name), idx)
             return
         end if
 
-        do i = 1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                Vars(i)%value = trim(value)
-                if (present(vartype)) Vars(i)%vartype = trim(vartype)
-                read(value, *, iostat=iosn) tmp
-                if (iosn == 0) then
-                    Vars(i)%numVal = tmp
-                    Vars(i)%isNum  = .true.
-                else
-                    Vars(i)%isNum  = .false.
-                end if
-                cacheCount = cacheCount + 1
-                cacheNames(cacheCount) = trim(name)
-                cacheIdx(cacheCount)   = i
-                return
+        i = findVarIdx(name)
+        if (i > 0 .and. i <= VarCount) then
+            Vars(i)%value = trim(value)
+            if (present(vartype)) Vars(i)%vartype = trim(vartype)
+            read(value, *, iostat=iosn) tmp
+            if (iosn == 0) then
+                Vars(i)%numVal = tmp
+                Vars(i)%isNum  = .true.
+            else
+                Vars(i)%isNum  = .false.
             end if
-        end do
+            cacheCount = cacheCount + 1
+            cacheNames(cacheCount) = trim(name)
+            cacheIdx(cacheCount)   = i
+            call insertVarHash(trim(name), i)
+            return
+        end if
 
         if (present(vartype)) then
             typeToSet = trim(vartype)
@@ -457,45 +479,36 @@ contains
         cacheCount = cacheCount + 1
         cacheNames(cacheCount) = trim(name)
         cacheIdx(cacheCount)   = VarCount
+        call insertVarHash(trim(name), VarCount)
     end subroutine setVar
 
     function getVarVar(name) result(returnVar)
         character(len=*), intent(in) :: name
         type(Var) :: returnVar
-        
-        do i =1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                returnVar = Vars(i)
-            end if
-        end do
+        integer :: idx
+
+        idx = findVarIdx(name)
+        if (idx > 0) returnVar = Vars(idx)
     end function getVarVar
 
     function getVar(name) result(val)
         character(len=*), intent(in) :: name
         character(len=256) :: val
-        integer :: i
+        integer :: idx
 
         val = "undefined"
-        do i = 1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                val = Vars(i)%value
-                return
-            end if
-        end do
+        idx = findVarIdx(name)
+        if (idx > 0) val = Vars(idx)%value
     end function getVar
 
     function getVarType(name) result(vtype)
         character(len=*), intent(in) :: name
         character(len=8) :: vtype
-        integer :: i
+        integer :: idx
 
         vtype = "undefined"
-        do i = 1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                vtype = Vars(i)%vartype
-                return
-            end if
-        end do
+        idx = findVarIdx(name)
+        if (idx > 0) vtype = Vars(idx)%vartype
     end function getVarType
 
     subroutine setMarker(position, name)
@@ -514,33 +527,6 @@ contains
         Markers(MarkerCount)%pos = position
         Markers(MarkerCount)%name = trim(name)
     end subroutine setMarker
-
-    subroutine split(input, delimiter, tokens, count)
-        character(len=*), intent(in) :: input
-        character(len=*), intent(in) :: delimiter
-        character(len=256), intent(out) :: tokens(:)
-        integer, intent(out) :: count
-
-        integer :: start, pos, lenInput, lenDelim
-
-        count = 0
-        lenInput = len_trim(input)
-        lenDelim = len_trim(delimiter)
-        start = 1
-
-        do
-            pos = index(input(start:), delimiter)
-            if (pos == 0) then
-                count = count + 1
-                tokens(count) = adjustl(trim(input(start:lenInput)))
-                exit
-            else
-                count = count + 1
-                tokens(count) = adjustl(trim(input(start:start+pos-2)))
-                start = start + pos + lenDelim - 1
-            end if
-        end do
-    end subroutine split
 
     pure function toStringReal(x) result(s)
         real(kind=8), intent(in) :: x
@@ -588,7 +574,6 @@ contains
        
         ok = try_parse_indexed_token(trimmed, base, idx)
         if (ok) then
-            
             listIdx = -1
             do j = 1, listCacheCount
                 if (trim(base) == listCacheNames(j)) then
@@ -625,15 +610,14 @@ contains
             return
         end if
 
-        do j = 1, VarCount
-            if (trimmed == trim(Vars(j)%name)) then
-                res = Vars(j)%value
-                varCacheCount = varCacheCount + 1
-                varCacheNames(varCacheCount) = trim(Vars(j)%name)
-                varCacheIdx(varCacheCount) = j
-                return
-            end if
-        end do
+        varIdx = findVarIdx(trimmed)
+        if (varIdx > 0) then
+            res = Vars(varIdx)%value
+            varCacheCount = varCacheCount + 1
+            varCacheNames(varCacheCount) = trimmed
+            varCacheIdx(varCacheCount) = varIdx
+            return
+        end if
 
       
         res = trimmed
@@ -665,15 +649,14 @@ contains
             end if
         end do
 
-        do i = 1, VarCount
-            if (t == Vars(i)%name) then
-                res = Vars(i)%value
-                cacheCount = cacheCount + 1
-                cacheNames(cacheCount) = t
-                cacheIdx(cacheCount)   = i
-                return
-            end if
-        end do
+        i = findVarIdx(t)
+        if (i > 0) then
+            res = Vars(i)%value
+            cacheCount = cacheCount + 1
+            cacheNames(cacheCount) = t
+            cacheIdx(cacheCount)   = i
+            return
+        end if
 
         res = resolveToken(t)
     end function resolveToken_fast
@@ -736,6 +719,226 @@ contains
             end select
         end if
     end function cmp_values
+
+    logical function parse_int_string(str, value)
+        character(len=*), intent(in) :: str
+        integer, intent(out) :: value
+        integer :: ios_local
+        real(kind=8) :: tmpReal
+
+        parse_int_string = .false.
+        read(str, *, iostat=ios_local) value
+        if (ios_local == 0) then
+            parse_int_string = .true.
+            return
+        end if
+
+        read(str, *, iostat=ios_local) tmpReal
+        if (ios_local == 0) then
+            value = int(tmpReal)
+            parse_int_string = .true.
+        end if
+    end function parse_int_string
+
+    subroutine init_intern_pool()
+        internCount = 0
+        internCapacity = 0
+        allocate(internValues(0))
+        allocate(internHash(INTERN_HASH_SIZE))
+        internHash = 0
+    end subroutine init_intern_pool
+
+    subroutine ensureInternCapacity(newSize)
+        integer, intent(in) :: newSize
+        character(len=256), allocatable :: tmp(:)
+        integer :: newCap
+
+        if (newSize <= internCapacity) return
+        newCap = max(8, internCapacity)
+        if (newCap <= 0) newCap = 8
+        do while (newCap < newSize)
+            newCap = newCap * 2
+        end do
+        allocate(tmp(newCap))
+        if (internCapacity > 0) tmp(1:internCount) = internValues(1:internCount)
+        call move_alloc(tmp, internValues)
+        internCapacity = newCap
+    end subroutine ensureInternCapacity
+
+    pure integer function hashInternString(str) result(bucket)
+        character(len=*), intent(in) :: str
+        integer :: i, c, h, L
+        character(len=256) :: trimmed
+
+        trimmed = trim(str)
+        h = 5381
+        L = len_trim(trimmed)
+        do i = 1, L
+            c = iachar(trimmed(i:i))
+            h = ishft(h, 5) + h + c
+        end do
+        if (h < 0) h = -h
+        bucket = modulo(h, INTERN_HASH_SIZE) + 1
+    end function hashInternString
+
+    integer function intern_string(str) result(id)
+        character(len=*), intent(in) :: str
+        character(len=256) :: trimmed
+        integer :: bucket, steps
+
+        trimmed = adjustl(trim(str))
+        if (len_trim(trimmed) == 0) then
+            id = 0
+            return
+        end if
+
+        if (.not.allocated(internHash)) call init_intern_pool()
+
+        bucket = hashInternString(trimmed)
+        steps = 0
+        do while (steps < INTERN_HASH_SIZE)
+            if (internHash(bucket) == 0) then
+                internCount = internCount + 1
+                call ensureInternCapacity(internCount)
+                internValues(internCount) = trimmed
+                internHash(bucket) = internCount
+                id = internCount
+                return
+            else if (internValues(internHash(bucket)) == trimmed) then
+                id = internHash(bucket)
+                return
+            end if
+            bucket = bucket + 1
+            if (bucket > INTERN_HASH_SIZE) bucket = 1
+            steps = steps + 1
+        end do
+        id = 0
+    end function intern_string
+
+    function getInternString(id) result(str)
+        integer, intent(in) :: id
+        character(len=256) :: str
+        if (id >= 1 .and. id <= internCount) then
+            str = internValues(id)
+        else
+            str = ""
+        end if
+    end function getInternString
+
+    pure integer function hashVarName(name) result(bucket)
+        character(len=*), intent(in) :: name
+        integer :: i, c, h, L
+        character(len=256) :: trimmed
+
+        trimmed = trim(name)
+        h = 5381
+        L = len_trim(trimmed)
+        do i = 1, L
+            c = iachar(trimmed(i:i))
+            h = ishft(h, 5) + h + c
+        end do
+        if (h < 0) h = -h
+        bucket = modulo(h, VAR_HASH_SIZE) + 1
+    end function hashVarName
+
+    subroutine insertVarHash(name, idx)
+        character(len=*), intent(in) :: name
+        integer, intent(in) :: idx
+        integer :: bucket, steps
+        character(len=256) :: trimmed
+
+        if (.not.allocated(varHash)) return
+        trimmed = trim(name)
+        if (len_trim(trimmed) == 0) return
+        bucket = hashVarName(trimmed)
+        steps = 0
+        do while (steps < VAR_HASH_SIZE)
+            if (varHash(bucket) == 0) then
+                varHash(bucket) = idx
+                return
+            else if (trim(Vars(varHash(bucket))%name) == trimmed) then
+                varHash(bucket) = idx
+                return
+            end if
+            bucket = bucket + 1
+            if (bucket > VAR_HASH_SIZE) bucket = 1
+            steps = steps + 1
+        end do
+    end subroutine insertVarHash
+
+    integer function findVarIdx(name) result(idx)
+        character(len=*), intent(in) :: name
+        integer :: bucket, steps, existing
+        character(len=256) :: trimmed
+
+        idx = 0
+        if (.not.allocated(varHash)) return
+        trimmed = trim(name)
+        if (len_trim(trimmed) == 0) return
+        bucket = hashVarName(trimmed)
+        steps = 0
+        do while (steps < VAR_HASH_SIZE)
+            existing = varHash(bucket)
+            if (existing == 0) return
+            if (trim(Vars(existing)%name) == trimmed) then
+                idx = existing
+                return
+            end if
+            bucket = bucket + 1
+            if (bucket > VAR_HASH_SIZE) bucket = 1
+            steps = steps + 1
+        end do
+    end function findVarIdx
+
+    integer function ensureVarIdx(name) result(idx)
+        character(len=*), intent(in) :: name
+        character(len=256) :: trimmed
+
+        trimmed = trim(name)
+        idx = findVarIdx(trimmed)
+        if (idx == 0) then
+            VarCount = VarCount + 1
+            call extendArrayVar(Vars, VarCount)
+            idx = VarCount
+            Vars(idx)%name = trimmed
+            Vars(idx)%value = ''
+            Vars(idx)%vartype = 'str'
+            Vars(idx)%numVal = 0.0d0
+            Vars(idx)%isNum  = .false.
+            call insertVarHash(trimmed, idx)
+        end if
+    end function ensureVarIdx
+
+    subroutine setVarNumericFast(name, value)
+        character(len=*), intent(in) :: name
+        real(kind=8), intent(in) :: value
+        character(len=256) :: buf
+        integer :: idx
+
+        idx = ensureVarIdx(name)
+        write(buf, '(G0)') value
+        buf = adjustl(buf)
+        Vars(idx)%value = trim(buf)
+        Vars(idx)%vartype = 'float'
+        Vars(idx)%numVal = value
+        Vars(idx)%isNum  = .true.
+    end subroutine setVarNumericFast
+
+    logical function getNumericValueFast(tok, value)
+        character(len=*), intent(in) :: tok
+        real(kind=8), intent(out) :: value
+        integer :: idx
+        character(len=256) :: resolved
+
+        idx = findVarIdx(trim(tok))
+        if (idx > 0 .and. Vars(idx)%isNum) then
+            value = Vars(idx)%numVal
+            getNumericValueFast = .true.
+            return
+        end if
+        resolved = resolveToken_fast(tok)
+        getNumericValueFast = try_parse_real(resolved, value)
+    end function getNumericValueFast
 
     subroutine pushGo(pos)
         integer, intent(in) :: pos
@@ -822,17 +1025,16 @@ contains
     subroutine createVar(name, value, vartype)
         character(len=*), intent(in) :: name, value
         character(len=*), intent(in), optional :: vartype
-        integer :: i
+        integer :: existing
 
-        do i = 1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                write(*,*) "Error: variable already exists: ", trim(name)
-                if (suffix=='!') then
-                    call exit(1)
-                end if
-                return
+        existing = findVarIdx(name)
+        if (existing > 0) then
+            write(*,*) "Error: variable already exists: ", trim(name)
+            if (suffix=='!') then
+                call exit(1)
             end if
-        end do
+            return
+        end if
 
         if (present(vartype)) then
             call setVar(name, value, vartype)
@@ -845,17 +1047,10 @@ contains
     subroutine modifyVar(name, value, vartype)
         character(len=*), intent(in) :: name, value
         character(len=*), intent(in), optional :: vartype
-        integer :: i, found
+        integer :: idx
 
-        found = 0
-        do i = 1, VarCount
-            if (trim(Vars(i)%name) == trim(name)) then
-                found = 1
-                exit
-            end if
-        end do
-
-        if (found == 0) then
+        idx = findVarIdx(name)
+        if (idx == 0) then
             write(*,*) "Error: variable not found: ", trim(name)
             if (suffix=='!') then
                 call exit(1)
@@ -903,28 +1098,29 @@ contains
         idxstr = adjustl(tok(lb+1:rb-1))
 
         
-        val = getVar(trim(idxstr))
-        if (trim(val) == 'undefined') val = trim(idxstr)
+        iostat_local = findVarIdx(trim(idxstr))
+        if (iostat_local > 0) then
+            val = Vars(iostat_local)%value
+        else
+            val = trim(idxstr)
+        end if
 
-        read(val, *, iostat=iostat_local) idx
-        ok = (iostat_local == 0 .and. len_trim(base) > 0)
+        if (.not. parse_int_string(trim(val), idx)) then
+            ok = .false.
+            return
+        end if
+        ok = (len_trim(base) > 0)
     end function try_parse_indexed_token
 
-    subroutine extendArrayStr(arr, newSize)
-        character(len=256), allocatable, intent(inout) :: arr(:)
-        integer, intent(in) :: newSize
-        character(len=256), allocatable :: tmp(:)
-        allocate(tmp(newSize))
-        if (size(arr) > 0) tmp(1:size(arr)) = arr
-        call move_alloc(tmp, arr)
-    end subroutine extendArrayStr
-
-
     subroutine execute_command(cmdId, tokens, ntok, lineNumber)
+        use formin_opcodes, only: OP_SPEW, OP_SPEWMULT, OP_COLOR, OP_CREATE, &
+            OP_ADD, OP_SUB, OP_MULT, OP_DIV, OP_MARK, OP_GO, OP_IFGO, OP_ASK, &
+            OP_CLEAR, OP_OPEN, OP_READ, OP_CLOSE, OP_GOBACK, OP_STR, OP_TYPE, &
+            OP_SET, OP_MOD, OP_GETOS, OP_RANDI, OP_SQRT, OP_LIST, OP_SYS, &
+            OP_CPUTIME
         integer, intent(in) :: cmdId
         character(len=256), intent(in) :: tokens(:)
         integer, intent(inout) :: ntok, lineNumber
-
             select case(trim(suffix))
 
                 case('?')
@@ -1003,10 +1199,10 @@ contains
 
             case (OP_GO)
                 if (ntok == 1) then
-                    lineInt = getMarker(trim(tokens(1)))
+                    lineInt = Parsed(lineNumber)%jumpA
+                    if (lineInt <= 0) lineInt = getMarker(trim(tokens(1)))
                     if (lineInt > 0) then
-                        call pushGo(lineNumber)
-                        lineNumber = lineint - 1
+                        call jump_to_pc(lineInt)
                     else
                         write(*,*) "Error: marker not found: ", trim(tokens(1))
                         if (suffix=='!') then
@@ -1025,10 +1221,13 @@ contains
                     s1 = resolveToken_fast(tokens(1))
                     s2 = resolveToken_fast(tokens(3))
                     if (cmp_values(s1, s2, trim(tokens(2)))) then
-                        call jump_to(tokens(4))
+                        lineInt = Parsed(lineNumber)%jumpA
+                        if (lineInt <= 0 .and. trim(tokens(4)) /= '_') lineInt = getMarker(trim(tokens(4)))
                     else
-                        call jump_to(tokens(5))
+                        lineInt = Parsed(lineNumber)%jumpB
+                        if (lineInt <= 0 .and. trim(tokens(5)) /= '_') lineInt = getMarker(trim(tokens(5)))
                     end if
+                    if (lineInt > 0) call jump_to_pc(lineInt)
                 else
                     write(*,*) "Error: ifgo requires 5 tokens (var1|comparison|var2|marker|marker)"
                     if (suffix=='!') then
@@ -1039,8 +1238,21 @@ contains
             case (OP_ASK)
                 if (ntok==2) then
                     write(*,*) trim(resolveToken_fast(tokens(1)))
-                    read(*,*) tempRead
-                    call setVar(trim(tokens(2)), trim(tempRead))
+                    tempRead = ''
+                    read(*,'(A)', iostat=ios_local) tempRead
+                    if (ios_local /= 0) then
+                        if (ios_local < 0) then
+                            write(*,*) "Warning: ask reached end of input; storing empty string."
+                        else
+                            write(*,*) "Error: ask failed to read input."
+                        end if
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
+                        call setVar(trim(tokens(2)), '')
+                    else
+                        call setVar(trim(tokens(2)), trim(tempRead))
+                    end if
                 else
                     print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
                     if (suffix=='!') then
@@ -1133,9 +1345,8 @@ contains
                     lineNumber = lineInt - 1
                 end if
             case(OP_STR)
-                select case(trim(tokens(1)))
-
-                case("cat")
+                subId = Parsed(lineNumber)%tokenInternIds(1)
+                if (subId == INTERN_STR_CAT) then
                     if (ntok >= 4) then
                         s1 = resolveToken_fast(tokens(3))
                         s2 = resolveToken_fast(tokens(4))
@@ -1158,7 +1369,7 @@ contains
                             call exit(1)
                         end if
                     end if
-                case("rev")
+                else if (subId == INTERN_STR_REV) then
                     if(ntok==3) then
                         s1 = resolveToken_fast(tokens(3))
                         strSave = ''
@@ -1170,7 +1381,7 @@ contains
                             call exit(1)
                         end if
                     end if
-                case("low")
+                else if (subId == INTERN_STR_LOW) then
                     if(ntok==3) then
                         s1 = resolveToken_fast(tokens(3))
                         strSave = ''
@@ -1182,7 +1393,7 @@ contains
                             call exit(1)
                         end if
                     end if
-                case("up")
+                else if (subId == INTERN_STR_UP) then
                     if(ntok==3) then
                         s1 = resolveToken_fast(tokens(3))
                         strSave = ''
@@ -1194,7 +1405,7 @@ contains
                             call exit(1)
                         end if
                     end if
-                case("len")
+                else if (subId == INTERN_STR_LEN) then
                     if(ntok==3) then
                         s1 = trim(tokens(2))
                         s2 = resolveToken_fast(tokens(3))
@@ -1209,8 +1420,10 @@ contains
                             call exit(1)
                         end if
                     end if
-                
-                end select
+                else
+                    write(*,*) "Error: str requires a valid subcommand"
+                    if (suffix=='!') call exit(1)
+                end if
             case(OP_TYPE)
                 if(ntok==2) then
                     s1 = trim(tokens(1))
@@ -1302,9 +1515,8 @@ contains
                     write(*,*) "Error: list requires a subcommand"
                     if (suffix=='!') call exit(1)
                 else
-                    select case (trim(lower(tokens(1))))
-
-                    case ("create","new")
+                    subId = Parsed(lineNumber)%tokenInternIds(1)
+                    if (subId == INTERN_LIST_CREATE .or. subId == INTERN_LIST_NEW) then
                         if (ntok /= 2) then
                             write(*,*) "Error: list create|name"
                             if (suffix=='!') call exit(1)
@@ -1312,7 +1524,7 @@ contains
                             call createList(Lists, ListCount, trim(tokens(2)))
                         end if
 
-                    case ("push")
+                    else if (subId == INTERN_LIST_PUSH) then
                         if (ntok /= 3) then
                             write(*,*) "Error: list push|name|value"
                             if (suffix=='!') call exit(1)
@@ -1329,20 +1541,19 @@ contains
                         end if
 
 
-                    case ("get")
+                    else if (subId == INTERN_LIST_GET) then
                         if (ntok /= 4) then
                             write(*,*) "Error: list get|outVar|name|index"
                             if (suffix=='!') call exit(1)
                         else
-                            tmpStr = resolveToken_fast(tokens(4))
-                            read(tmpStr, *, iostat=ios_local) i
-                            if (ios_local /= 0) then
-                                write(*,*) "Error: index must be integer"
-                                if (suffix=='!') call exit(1)
-                            else
-                                if (Parsed(lineNumber)%listIndex < 1) then
-                                    Parsed(lineNumber)%listIndex = findList(Lists, ListCount, trim(tokens(3)))
-                                end if
+                        tmpStr = resolveToken_fast(tokens(4))
+                        if (.not. parse_int_string(tmpStr, i)) then
+                            write(*,*) "Error: index must be integer"
+                            if (suffix=='!') call exit(1)
+                        else
+                            if (Parsed(lineNumber)%listIndex < 1) then
+                                Parsed(lineNumber)%listIndex = findList(Lists, ListCount, trim(tokens(3)))
+                            end if
                                 if (Parsed(lineNumber)%listIndex > 0) then
                                     call setVar(trim(tokens(2)), listGetIdx(Lists, Parsed(lineNumber)%listIndex, i), 'str')
                                 else
@@ -1352,20 +1563,19 @@ contains
                             end if
                         end if
 
-                    case ("set")
+                    else if (subId == INTERN_LIST_SET) then
                         if (ntok /= 4) then
                             write(*,*) "Error: list set|name|index|value"
                             if (suffix=='!') call exit(1)
+                    else
+                        tmpStr = resolveToken_fast(tokens(3))
+                        if (.not. parse_int_string(tmpStr, i)) then
+                            write(*,*) "Error: index must be integer"
+                            if (suffix=='!') call exit(1)
                         else
-                            tmpStr = resolveToken_fast(tokens(3))
-                            read(tmpStr, *, iostat=ios_local) i
-                            if (ios_local /= 0) then
-                                write(*,*) "Error: index must be integer"
-                                if (suffix=='!') call exit(1)
-                            else
-                                if (Parsed(lineNumber)%listIndex < 1) then
-                                    Parsed(lineNumber)%listIndex = findList(Lists, ListCount, trim(tokens(2)))
-                                end if
+                            if (Parsed(lineNumber)%listIndex < 1) then
+                                Parsed(lineNumber)%listIndex = findList(Lists, ListCount, trim(tokens(2)))
+                            end if
                                 if (Parsed(lineNumber)%listIndex > 0) then
                                     call listSetIdx(Lists, Parsed(lineNumber)%listIndex, i, trim(resolveToken_fast(tokens(4))))
                                 else
@@ -1375,7 +1585,7 @@ contains
                             end if
                         end if
 
-                    case ("len")
+                    else if (subId == INTERN_LIST_LEN) then
                         if (ntok /= 3) then
                             write(*,*) "Error: list len|outVar|name"
                             if (suffix=='!') call exit(1)
@@ -1384,7 +1594,7 @@ contains
                             call setVar(trim(tokens(2)), finalValStr, 'int')
                         end if
 
-                    case ("pop")
+                    else if (subId == INTERN_LIST_POP) then
                         if (ntok /= 3) then
                             write(*,*) "Error: list pop|outVar|name"
                             if (suffix=='!') call exit(1)
@@ -1393,21 +1603,20 @@ contains
                             call setVar(trim(tokens(2)), trim(tmpStr), 'str')
                         end if
 
-                    case ("clear")
+                    else if (subId == INTERN_LIST_CLEAR) then
                         if (ntok /= 2) then
                             write(*,*) "Error: list clear|name"
                             if (suffix=='!') call exit(1)
                         else
                             call listClear(Lists, ListCount, trim(tokens(2)))
                         end if
-                    case ("reserve")
+                    else if (subId == INTERN_LIST_RESERVE) then
                     if (ntok /= 3) then
                         write(*,*) "Error: list reserve|name|capacity"
                         if (suffix=='!') call exit(1)
                     else
                         tmpStr = resolveToken_fast(tokens(3))
-                        read(tmpStr, *, iostat=ios_local) i
-                        if (ios_local /= 0) then
+                        if (.not. parse_int_string(tmpStr, i)) then
                             write(*,*) "Error: capacity must be an integer"
                             if (suffix=='!') call exit(1)
                         else
@@ -1416,10 +1625,10 @@ contains
                         end if
                     end if
 
-                    case default
+                    else
                         write(*,*) "Error: unknown list subcommand"
                         if (suffix=='!') call exit(1)
-                    end select
+                    end if
                 end if
 
             case(OP_SYS)
@@ -1453,12 +1662,55 @@ contains
                 end if
 
             case default
-                write(*,'(A)') "Unknown command: "//trim(command)
+                write(*,'(A,I0)') "Unknown opcode: ", cmdId
                 if (suffix=='!') then
                     call exit(1)
                 end if
             end select
     end subroutine execute_command
 
+    subroutine set_color(color)
+        character(len=*), intent(in) :: color
+        character(len=64) :: normalized
 
-end program interpreter
+        normalized = adjustl(trim(color))
+        select case (normalized)
+        case ("reset")
+            write(*,'(A)', advance="no") char(27)//"[0m"
+        case ("black")
+            write(*,'(A)', advance="no") char(27)//"[30m"
+        case ("red")
+            write(*,'(A)', advance="no") char(27)//"[31m"
+        case ("green")
+            write(*,'(A)', advance="no") char(27)//"[32m"
+        case ("yellow")
+            write(*,'(A)', advance="no") char(27)//"[33m"
+        case ("blue")
+            write(*,'(A)', advance="no") char(27)//"[34m"
+        case ("magenta")
+            write(*,'(A)', advance="no") char(27)//"[35m"
+        case ("cyan")
+            write(*,'(A)', advance="no") char(27)//"[36m"
+        case ("white")
+            write(*,'(A)', advance="no") char(27)//"[37m"
+        case ("bright_red")
+            write(*,'(A)', advance="no") char(27)//"[1;31m"
+        case ("bright_green")
+            write(*,'(A)', advance="no") char(27)//"[1;32m"
+        case ("bright_yellow")
+            write(*,'(A)', advance="no") char(27)//"[1;33m"
+        case ("bright_blue")
+            write(*,'(A)', advance="no") char(27)//"[1;34m"
+        case ("bright_magenta")
+            write(*,'(A)', advance="no") char(27)//"[1;35m"
+        case ("bright_cyan")
+            write(*,'(A)', advance="no") char(27)//"[1;36m"
+        case ("bright_white")
+            write(*,'(A)', advance="no") char(27)//"[1;37m"
+        case default
+            continue
+        end select
+    end subroutine set_color
+
+
+end program forminvm

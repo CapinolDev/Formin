@@ -1,7 +1,10 @@
-create#/x|0/#
+create#/a|0/#
+color#/green/#
+spew#/start/#
 mark#/loop/#
-add#/x|x|1/#
-ifgo#/x|<|500000|loop|end/#
+add#/a|a|1/#
+ifgo#/a|<|500000|loop|end/#
 mark#/end/#
+color#/bright_green/#
 spew#/'done'/#
 bye
