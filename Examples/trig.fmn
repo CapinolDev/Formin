@@ -1,0 +1,34 @@
+mark#/start/#
+ask#/'radians or degrees?'|choice1/#
+ifgo#/choice1|is|radians|choseRads|_/#
+ifgo#/choice1|is|degrees|choseDegrees|_/#
+color#/bright_red/#
+spew#/Invalid choice:|choice1/#
+color#/reset/#
+go#/start/#
+
+mark#/choseRads/#
+color#/bright_yellow/#
+ask#/'Input radians:'|x/#
+color#/reset/#
+sin#/sinX|rad|x/#
+cos#/cosX|rad|x/#
+tan#/tanX|rad|x/#
+
+spew#/'Sin:'|sinX/#
+spew#/'Cos:'|cosX/#
+spew#/'Tan:'|tanX/#
+bye
+
+mark#/choseDegrees/#
+color#/bright_blue/#
+ask#/'Input degrees:'|x/#
+color#/reset/#
+sin#/sinX|dg|x/#
+cos#/cosX|dg|x/#
+tan#/tanX|dg|x/#
+
+spew#/'Sin:'|sinX/#
+spew#/'Cos:'|cosX/#
+spew#/'Tan:'|tanX/#
+bye

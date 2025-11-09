@@ -1,6 +1,5 @@
 program forminc
     use formin_opcodes
-    use terminal_colors
     implicit none
 
     
@@ -46,7 +45,14 @@ program forminc
         line = trim(line)
         if (line == "") cycle
         if (line(1:1) == "!") cycle  
-        if (lower_str(line) == "bye") cycle  
+
+        if (lower_str(line) == "bye") then
+            ProgCount = ProgCount + 1
+            call extendArrayInstr(Program, ProgCount)
+            call clearInstr(Program(ProgCount))
+            Program(ProgCount)%op = OP_BYE
+            cycle
+        end if
 
         pos1 = index(line, "#/")
         pos2 = index(line, "/#")
@@ -239,6 +245,13 @@ program forminc
             else
                 call assign_tokens(n)
             end if
+        case ("pow")
+            Program(ProgCount)%op = OP_POW
+                if (n < 3) then
+                    call warn(lineNo, "pow requires 3 tokens: var|value1|value2")
+                else
+                    call assign_tokens(n)
+                end if
         case ("sys")
             Program(ProgCount)%op = OP_SYS
             if (n < 1) then
@@ -261,6 +274,36 @@ program forminc
             else
                 call assign_tokens(n)
             end if
+        case ("sin")
+            Program(ProgCount)%op = OP_SIN
+                if (n<3) then 
+                    call warn(lineNo, "sin requires 3 tokens: var|degrees/rads|num")
+                else
+                    call assign_tokens(n)
+                end if
+        case ("cos")
+            Program(ProgCount)%op = OP_COS
+                if (n<3) then 
+                    call warn(lineNo, "cos requires 3 tokens: var|degrees/rads|num")
+                else
+                    call assign_tokens(n)
+                end if
+        case ("tan")
+            Program(ProgCount)%op = OP_TAN
+                if (n<3) then 
+                    call warn(lineNo, "tan requires 3 tokens: var|degrees/rads|num")
+                else
+                    call assign_tokens(n)
+                end if
+        case("abs")
+            Program(ProgCount)%op = OP_ABS
+            if (n<2) then
+                call warn(lineNo, "abs requires 2 tokens: var|num")
+            else 
+                call assign_tokens(n)
+            end if
+        
+        
 
         case default
           

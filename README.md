@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - now delivered as a compiled toolchain for performance and portability.
 
-**Version:** 1.1.2
+**Version:** 1.1.3
 **Author:** Capinol  
 **Toolchain:** `forminc` (compiler) + `forminvm` (virtual machine)
 
@@ -81,7 +81,7 @@ Download the pair from the [Releases page](https://github.com/CapinolDev/formin/
    ```
 
 ### Windows (PowerShell or CMD)
-1. Download the latest release ZIP and extract **`forminc.exe`** and **`forminvm.exe`**.
+1. Download the latest release of **`forminc.exe`** and **`forminvm.exe`**.
 2. Optional: add their folder to `PATH`, or keep them next to your project.
 3. Compile and run:
    ```powershell
@@ -306,9 +306,18 @@ Watch out for divison by zero!
 Gets the remainder of a number after division
 [Example](Examples/mod.fmn)
 
+#### pow#//#
+Gets the power of first variable to power of second variable
+[Example](Examples/pow.fmn)
+
 #### sqrt#//#
 Gets the square root of a number.
 Example: ``` sqrt#/x|16/# ``` > x is 4
+
+#### abs#//#
+Gets the absolute value of a number.
+[Example](Examples/abs.fmn)
+
 
 ### File handling
 
@@ -405,6 +414,15 @@ Example above removes the last item of the list 'names' and stores it in a var '
 
 clear: clears a list.
 Example: ``` list#/clear|names/# ```
+
+### Trigonometry
+
+#### sin,cos, tan
+Gets the sine, cosine, tangent of a number.
+Syntax: ``` sin#/*where to store result*|*dg/rad*|*number*/# ```
+[Example](Examples/trig.fmn)
+
+
 
 ### Suffixes
 Suffixes are special characters at the end of a command, to change the way it behaves.

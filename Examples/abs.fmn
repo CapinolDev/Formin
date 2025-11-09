@@ -1,0 +1,3 @@
+ask#/'Input number:'|x/#
+abs#/absX|x/#
+spew#/The absolute value of|x|is|absX/#

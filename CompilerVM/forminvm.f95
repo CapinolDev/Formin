@@ -27,7 +27,7 @@ program forminvm
     integer :: goDepth = 0
     character(len=256) :: finalValStr
     character(len=256) :: userOs
-    real :: r
+    real :: r, r2
     integer :: jdx, intVal, subId
     character(len=256), allocatable :: tmp(:)
     character(len=256) :: tmpStr
@@ -96,7 +96,7 @@ program forminvm
         userOs = 'Unix'
     end if
 
-    version = '1.1.2'
+    version = '1.1.3'
 
     VarCount = 0
     MarkerCount = 0
@@ -1502,7 +1502,7 @@ contains
                     
                     read(s2,*) r
                     r = sqrt(r)
-                    write(s2, '(F5.3)') r
+                    write(s2, '(G0)') r
                     call setVar(trim(s1),trim(s2))
                 else
                     write(*,*) "Error: sqrt requires 2 tokens: var|number"
@@ -1510,6 +1510,114 @@ contains
                         call exit(1)
                     end if
                 end if
+            case(OP_POW)
+                if (ntok==3) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken_fast(tokens(2))
+                    s3 = resolveToken_fast(tokens(3))
+
+                    read(s2,*) r
+                    read(s3, *) r2
+                    r = r**r2
+                    write(s2, '(G0)') r
+                    call setVar (trim(s1), trim(s2))
+                else
+                    write(*,*) "Error: pow requires 3 tokens: var|number1|number2"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+
+            case(OP_SIN)
+                if (ntok==3) then
+                    s1 = trim(tokens(1))
+                    s2 = trim(tokens(2))
+                    s3 = resolveToken_fast(tokens(3))
+
+                    read(s3,*) r
+                    if (s2 == 'dg') then
+                        r = r * (ACOS(-1.0)/180.0)
+                        r = sin(r)
+                        write(s2, '(G0)') r 
+                    else if (s2=='rad') then
+                        r = sin(r)
+                        write(s2, '(G0)') r 
+                    else 
+                        write(*,*) "Error: unknown rad/dg type"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
+                    end if
+                    
+                    call setVar (trim(s1), trim(s2))
+
+                else
+                    write(*,*) "Error: sin requires 3 tokens: var|dg/rad|number"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+
+            case(OP_COS)
+                if (ntok==3) then
+                    s1 = trim(tokens(1))
+                    s2 = trim(tokens(2))
+                    s3 = resolveToken_fast(tokens(3))
+
+                    read(s3,*) r
+                    if (s2 == 'dg') then
+                        r = r * (ACOS(-1.0)/180.0)
+                        r = cos(r)
+                        write(s2, '(G0)') r 
+                    else if (s2=='rad') then
+                        r = cos(r)
+                        write(s2, '(G0)') r 
+                    else 
+                        write(*,*) "Error: unknown rad/dg type"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
+                    end if
+                    
+                    call setVar (trim(s1), trim(s2))
+
+                else
+                    write(*,*) "Error: cos requires 3 tokens: var|dg/rad|number"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+
+            case(OP_TAN)
+                if (ntok==3) then
+                    s1 = trim(tokens(1))
+                    s2 = trim(tokens(2))
+                    s3 = resolveToken_fast(tokens(3))
+
+                    read(s3,*) r
+                    if (s2 == 'dg') then
+                        r = r * (ACOS(-1.0)/180.0)
+                        r = tan(r)
+                        write(s2, '(G0)') r 
+                    else if (s2=='rad') then
+                        r = tan(r)
+                        write(s2, '(G0)') r 
+                    else 
+                        write(*,*) "Error: unknown rad/dg type"
+                        if (suffix=='!') then
+                            call exit(1)
+                        end if
+                    end if
+                    
+                    call setVar (trim(s1), trim(s2))
+
+                else
+                    write(*,*) "Error: tan requires 3 tokens: var|dg/rad|number"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+
             case (OP_LIST)
                 if (ntok < 2) then
                     write(*,*) "Error: list requires a subcommand"
@@ -1648,7 +1756,7 @@ contains
 
                     call cpu_time(r)
 
-                    write(s2,'(F5.3)') r
+                    write(s2,'(G0)') r
 
                     call setVar(trim(s1), trim(s2))
 
@@ -1656,6 +1764,27 @@ contains
                 else 
 
                     write(*,*) 'Error: cputime requires 1 token: var'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+            case(OP_BYE)
+                if (trim(verbose) == 'loud') then
+                    call cpu_time(timerEnd)
+                    write(*,*) 'Execution time: ', timerEnd - timerStart, 's'
+                end if
+                call exit(0)
+            case(OP_ABS)
+                if(ntok==2) then
+                    s1 = trim(tokens(1))
+                    s2 = resolveToken_fast(tokens(2))
+
+                    read(s2, *) r 
+                    r = abs(r)
+                    write(s2,'(G0)') r
+                    call setVar(trim(s1), trim(s2))
+                else 
+                    write(*,*) 'Error: abs requires 2 tokens: var|num'
                     if (suffix=='!') then
                         call exit(1)
                     end if

@@ -1,0 +1,4 @@
+ask#/'Input num 1:'|x/#
+ask#/'Input num 2: '|y/#
+pow#/z|x|y/#
+spew#/x|'to the power of'|y|'is'|z/#
