@@ -1,0 +1,7 @@
+ask#/Input a real number|x/#
+floor#/floorX|x/#
+ceiling#/ceilingX|x/#
+color#/bright_magenta/#
+spew#/'The floor of'|x|'is'|floorX/#
+color#/bright_cyan/#
+spew#/'The ceiling of'|x|'is'|ceilingX/#

@@ -96,7 +96,7 @@ program forminvm
         userOs = 'Unix'
     end if
 
-    version = '1.1.3'
+    version = '1.1.4'
 
     VarCount = 0
     MarkerCount = 0
@@ -1145,6 +1145,18 @@ contains
                         call exit(1)
                     end if
                 end if
+            case(OP_SYS)
+                if (ntok==1) then
+                    s1 = resolveToken_fast(trim(tokens(1)))
+
+                    call system(trim(s1))
+
+                else
+                    write(*,*) 'Error: sys requires 1 token: str'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
 
             case(OP_SPEWMULT)
                 if (ntok >= 1) then
@@ -1445,6 +1457,7 @@ contains
                     write(*,*) "Error: set requires 2 or 3 tokens: var|value|[type]"
                     if (suffix=='!') then
                         call exit(1)
+                        
                     end if
                 end if
             case(OP_MOD)
@@ -1739,16 +1752,7 @@ contains
                     end if
                 end if
 
-            case(OP_SYS)
-                if (ntok==1) then
-                    s1 = resolveToken_fast(tokens(1))
-                    call system(s1)
-                else
-                    write(*,*) 'Error: sys requires 1 token: str'
-                    if (suffix=='!') then
-                        call exit(1)
-                    end if
-                end if
+            
 
             case(OP_CPUTIME)
                 if(ntok==1) then
@@ -1789,7 +1793,26 @@ contains
                         call exit(1)
                     end if
                 end if
+            case(OP_FLOOR)
+                if(ntok==2) then
+                    s1=trim(tokens(1))
+                    s2 = resolveToken_fast(tokens(2))
 
+                    read(s2,*) r
+                    r = floor(r)
+                    write(s2,'(G0)') r
+                    call setVar(trim(s1), trim(s2))
+                end if
+            case(OP_CEILING)
+                if(ntok==2) then
+                    s1=trim(tokens(1))
+                    s2 = resolveToken_fast(tokens(2))
+
+                    read(s2,*) r
+                    r = ceiling(r)
+                    write(s2,'(G0)') r
+                    call setVar(trim(s1), trim(s2))
+                end if
             case default
                 write(*,'(A,I0)') "Unknown opcode: ", cmdId
                 if (suffix=='!') then

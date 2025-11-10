@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - now delivered as a compiled toolchain for performance and portability.
 
-**Version:** 1.1.3
+**Version:** 1.1.4
 **Author:** Capinol  
 **Toolchain:** `forminc` (compiler) + `forminvm` (virtual machine)
 
@@ -317,6 +317,10 @@ Example: ``` sqrt#/x|16/# ``` > x is 4
 #### abs#//#
 Gets the absolute value of a number.
 [Example](Examples/abs.fmn)
+
+#### floor#//#, ceiling#//#
+Gets the floor/ceiling of a number.
+[Example](Examples/round.fmn)
 
 
 ### File handling

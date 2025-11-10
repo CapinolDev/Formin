@@ -302,7 +302,20 @@ program forminc
             else 
                 call assign_tokens(n)
             end if
-        
+        case("floor")
+            Program(ProgCount)%op = OP_FLOOR
+            if (n<2) then
+                call warn(lineNo, "floor requires 2 tokens: var|num")
+            else
+                call assign_tokens(n)
+            end if
+        case("ceiling")
+            Program(ProgCount)%op = OP_CEILING
+            if (n<2) then
+                call warn(lineNo, "ceiling requires 2 tokens: var|num")
+            else
+                call assign_tokens(n)
+            end if
         
 
         case default
