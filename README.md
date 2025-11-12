@@ -201,7 +201,8 @@ gets the users os (Either win or unix) and saves to a var
 [Example](Examples/getOs.fmn)
 
 #### sys#//#
-writes the input into the terminal/powershell of the computer running it.
+writes the input into the terminal/powershell of the computer running it.  
+Pair it with [`ins`](#ins) to pipe scripted stdin into interactive programs.
 Example (unix): ``` sys#/'ps aux'/# ```
 
 #### cputime#//#
@@ -232,6 +233,14 @@ Example:
 ```formin
     ask#/'What is your name?'|name/#
     spew#/'Hello'|name/#
+```
+
+#### ins#//#
+Buffers lines that will be piped into the next `sys` command. Each token becomes one stdin line, letting you interact with spawned programs (like another `forminvm` run) without manual typing.
+Example:
+```formin
+    ins#/'1'|'5'|'7'/#
+    sys#/'forminvm Examples/simpleCalc.fmn.fbc'/#
 ```
 
 #### ifgo#//#

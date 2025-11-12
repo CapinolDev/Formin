@@ -1,0 +1,7 @@
+
+mark#/loop/#
+create#/x|0/#?
+randi#/x|100/#
+ins#/x/#
+sys#/'forminvm Examples/numberGuess.fmn.fbc'/#
+go#/loop/#

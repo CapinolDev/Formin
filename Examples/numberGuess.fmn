@@ -7,7 +7,9 @@ mark#/loop/#
 add#/timesLooped|timesLooped|1/#
 ask#/'Input number guess: '|userInput/#
 ifgo#/userInput|>|answer|tooBig|_/#
+mark#/afterBig/#
 ifgo#/userInput|<|answer|tooSmall|_/#
+mark#/afterSmall/#
 ifgo#/userInput|is|answer|correct|_/#
 go#/loop/#
 
@@ -15,13 +17,13 @@ mark#/tooBig/#
 color#/bright_red/#
 spew#/Too big!/#
 color#/reset/#
-goback#//#
+go#/afterBig/#
 
 mark#/tooSmall/#
 color#/bright_red/#
 spew#/Too small!/#
 color#/reset/#
-goback#//#
+go#/afterSmall/#
 
 mark#/correct/#
 color#/bright_green/#

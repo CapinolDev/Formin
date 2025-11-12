@@ -76,6 +76,9 @@ program forminvm
     integer, allocatable :: internHash(:)
     integer :: internCount = 0
     integer :: internCapacity = 0
+    character(len=256), allocatable :: stdinQueue(:)
+    integer :: stdinQueueCount = 0
+    integer :: stdinQueueCapacity = 0
     integer :: INTERN_LIST_CREATE, INTERN_LIST_NEW, INTERN_LIST_PUSH, INTERN_LIST_GET
     integer :: INTERN_LIST_SET, INTERN_LIST_LEN, INTERN_LIST_POP, INTERN_LIST_CLEAR
     integer :: INTERN_LIST_RESERVE
@@ -96,7 +99,7 @@ program forminvm
         userOs = 'Unix'
     end if
 
-    version = '1.1.4'
+    version = '1.1.5'
 
     VarCount = 0
     MarkerCount = 0
@@ -278,6 +281,120 @@ contains
 
         call setVarNumericFast(trim(tokens(1)), res)
     end subroutine numeric_op
+
+    subroutine enqueue_stdin(value)
+        character(len=*), intent(in) :: value
+
+        call ensure_stdin_capacity(stdinQueueCount + 1)
+        stdinQueueCount = stdinQueueCount + 1
+        stdinQueue(stdinQueueCount) = trim(value)
+    end subroutine enqueue_stdin
+
+    subroutine ensure_stdin_capacity(required)
+        integer, intent(in) :: required
+        character(len=256), allocatable :: tmp(:)
+        integer :: newCap
+
+        if (stdinQueueCapacity >= required) return
+
+        newCap = max(8, stdinQueueCapacity)
+        if (newCap <= 0) newCap = 8
+        do while (newCap < required)
+            newCap = newCap * 2
+        end do
+
+        allocate(tmp(newCap))
+        if (stdinQueueCount > 0 .and. allocated(stdinQueue)) then
+            tmp(1:stdinQueueCount) = stdinQueue(1:stdinQueueCount)
+        end if
+        call move_alloc(tmp, stdinQueue)
+        stdinQueueCapacity = newCap
+    end subroutine ensure_stdin_capacity
+
+    subroutine run_command_with_ins(command)
+        character(len=*), intent(in) :: command
+        character(len=512) :: tmpFile
+        character(len=1024) :: pipedCommand
+        integer :: tmpUnit, ios_local_tmp, idx
+
+        call build_temp_input_path(tmpFile)
+        open(newunit=tmpUnit, file=trim(tmpFile), status='replace', action='write', iostat=ios_local_tmp)
+        if (ios_local_tmp /= 0) then
+            write(*,*) "Warning: unable to prepare ins input; running sys without injected stdin."
+            call system(trim(command))
+            call clear_stdin_queue()
+            return
+        end if
+
+        do idx = 1, stdinQueueCount
+            write(tmpUnit,'(A)') trim(stdinQueue(idx))
+        end do
+        close(tmpUnit)
+
+        pipedCommand = trim(command)//' < "'//trim(tmpFile)//'"'
+        call system(trim(pipedCommand))
+
+        call delete_temp_file(trim(tmpFile))
+        call clear_stdin_queue()
+    end subroutine run_command_with_ins
+
+    subroutine build_temp_input_path(path)
+        character(len=*), intent(out) :: path
+        character(len=256) :: tmpDir
+        character(len=1) :: sepChar
+        integer :: clockVal
+        character(len=64) :: suffix
+
+        tmpDir = ''
+        call get_environment_variable('TMPDIR', tmpDir)
+        if (len_trim(tmpDir) == 0) then
+            if (trim(userOs) == 'Windows') then
+                call get_environment_variable('TEMP', tmpDir)
+                if (len_trim(tmpDir) == 0) call get_environment_variable('TMP', tmpDir)
+                if (len_trim(tmpDir) == 0) tmpDir = '.'
+            else
+                tmpDir = '/tmp'
+            end if
+        end if
+
+        sepChar = '/'
+        if (trim(userOs) == 'Windows') sepChar = '\'
+        if (len_trim(tmpDir) == 0) then
+            tmpDir = '.'//sepChar
+        else
+            if (tmpDir(len_trim(tmpDir):len_trim(tmpDir)) /= sepChar) then
+                tmpDir = trim(tmpDir)//sepChar
+            end if
+        end if
+
+        call system_clock(clockVal)
+        write(suffix,'(I0)') abs(clockVal)
+        path = trim(tmpDir)//'formin_ins_'//trim(suffix)//'.tmp'
+    end subroutine build_temp_input_path
+
+    subroutine delete_temp_file(path)
+        character(len=*), intent(in) :: path
+        logical :: exists
+        integer :: tmpUnit, ios_local_tmp
+
+        inquire(file=trim(path), exist=exists)
+        if (.not. exists) return
+
+        open(newunit=tmpUnit, file=trim(path), status='old', action='readwrite', iostat=ios_local_tmp)
+        if (ios_local_tmp == 0) then
+            close(tmpUnit, status='delete')
+        else
+            if (trim(userOs) == 'Windows') then
+                call system('del "'//trim(path)//'"')
+            else
+                call system('rm -f "'//trim(path)//'"')
+            end if
+        end if
+    end subroutine delete_temp_file
+
+    subroutine clear_stdin_queue()
+        stdinQueueCount = 0
+    end subroutine clear_stdin_queue
 
     subroutine jump_to(tokMarker)
         character(len=*), intent(in) :: tokMarker
@@ -1117,7 +1234,7 @@ contains
             OP_ADD, OP_SUB, OP_MULT, OP_DIV, OP_MARK, OP_GO, OP_IFGO, OP_ASK, &
             OP_CLEAR, OP_OPEN, OP_READ, OP_CLOSE, OP_GOBACK, OP_STR, OP_TYPE, &
             OP_SET, OP_MOD, OP_GETOS, OP_RANDI, OP_SQRT, OP_LIST, OP_SYS, &
-            OP_CPUTIME
+            OP_CPUTIME, OP_INS
         integer, intent(in) :: cmdId
         character(len=256), intent(in) :: tokens(:)
         integer, intent(inout) :: ntok, lineNumber
@@ -1148,8 +1265,11 @@ contains
             case(OP_SYS)
                 if (ntok==1) then
                     s1 = resolveToken_fast(trim(tokens(1)))
-
-                    call system(trim(s1))
+                    if (stdinQueueCount > 0) then
+                        call run_command_with_ins(trim(s1))
+                    else
+                        call system(trim(s1))
+                    end if
 
                 else
                     write(*,*) 'Error: sys requires 1 token: str'
@@ -1254,19 +1374,37 @@ contains
                     read(*,'(A)', iostat=ios_local) tempRead
                     if (ios_local /= 0) then
                         if (ios_local < 0) then
-                            write(*,*) "Warning: ask reached end of input; storing empty string."
+                            write(*,*) "Warning: ask reached end of input; terminating program."
+                            call setVar(trim(tokens(2)), '')
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
+                            lineNumber = numLines
+                            return
                         else
                             write(*,*) "Error: ask failed to read input."
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
+                            call setVar(trim(tokens(2)), '')
                         end if
-                        if (suffix=='!') then
-                            call exit(1)
-                        end if
-                        call setVar(trim(tokens(2)), '')
                     else
                         call setVar(trim(tokens(2)), trim(tempRead))
                     end if
                 else
                     print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+            case (OP_INS)
+                if (ntok >= 1) then
+                    do i = 1, ntok
+                        s1 = trim(resolveToken_fast(tokens(i)))
+                        call enqueue_stdin(s1)
+                    end do
+                else
+                    write(*,*) "Error: ins requires at least 1 token: value"
                     if (suffix=='!') then
                         call exit(1)
                     end if

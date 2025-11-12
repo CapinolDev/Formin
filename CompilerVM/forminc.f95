@@ -148,6 +148,13 @@ program forminc
             else
                 call assign_tokens(n)
             end if
+        case ("ins")
+            Program(ProgCount)%op = OP_INS
+            if (n < 1) then
+                call warn(lineNo, "ins requires at least 1 token: value")
+            else
+                call assign_tokens(n)
+            end if
         case ("spewmult")
             Program(ProgCount)%op = OP_SPEWMULT
             if (n < 1) then
@@ -314,6 +321,13 @@ program forminc
             if (n<2) then
                 call warn(lineNo, "ceiling requires 2 tokens: var|num")
             else
+                call assign_tokens(n)
+            end if
+        case("exit")
+            Program(ProgCount)%op = OP_EXIT
+            if (n<1) then
+                call warn(lineNo, "exit requires 1 token: num")
+            else 
                 call assign_tokens(n)
             end if
         
