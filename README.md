@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - now delivered as a compiled toolchain for performance and portability.
 
-**Version:** 1.1.5
+**Version:** 1.1.6
 **Author:** Capinol  
 **Toolchain:** `forminc` (compiler) + `forminvm` (virtual machine)
 
@@ -235,6 +235,15 @@ Example:
     spew#/'Hello'|name/#
 ```
 
+#### key#//#
+Captures the numeric keycode of the most recent key event (or the same key while it's still being held) and stores it in a variable. Returns `0` when no key has been pressed yet.
+Example:
+```formin
+    key#/lastKey/#
+    spew#/'Last keycode:'|lastKey/#
+```
+> On Windows, held keys keep reporting while the key stays down. On Unix-like systems the command reports the latest key press only.
+
 #### ins#//#
 Buffers lines that will be piped into the next `sys` command. Each token becomes one stdin line, letting you interact with spawned programs (like another `forminvm` run) without manual typing.
 Example:
@@ -274,6 +283,19 @@ spew#/'Your number isnt six! '/#
 bye
 
 ``` 
+
+#### ifskip#//#
+Skips upcoming lines that use specific suffix markers when a comparison is true. Great for toggling optional blocks (like comments) without jumping around with markers.
+Format: ``` ifskip#/*x*|*comparer*|*y*|*suffixMask*|*count*/# ```
+Format explanation:
+x: first thing to compare  
+comparer: comparison operator (same list as `ifgo`)  
+y: second thing to compare  
+suffixMask: string containing every suffix character you want to skip (e.g. `.` or `%!`)  
+count: positive number of future lines (matching any of those suffix characters) to skip
+
+When the `x comparer y` test passes, the VM starts ignoring commands whose suffix begins with any character listed in `suffixMask` until it has skipped `count` of them. Each skipped command is treated like a comment at runtime without needing to manually insert `go` / `mark` pairs.  
+[Example](Examples/ifskip.fmn)
 
 #### type#//#
 gets the type of a var and stores it in another var.
@@ -473,7 +495,7 @@ because of the ! suffix, instead of just printing a warning, the program exits.
 
 #### any other suffix (comment)
 If you use any suffix that's not declared here, the line acts as a comment.
-It's the best way to make comments without the interpreter shouting at you.
+It's the best way to make comments without the interpreter shouting at you, and those suffix characters can also be targeted by [`ifskip`](#ifskip) to toggle optional blocks on or off.
 
 
 

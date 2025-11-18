@@ -1,0 +1,72 @@
+create#/cursorPos|1/#
+create#/lastCursorPos|0/#
+create#/x/#
+
+
+mark#/loop/#
+go#/spewMenu/#?
+key#/x/#
+ifgo#/x|is|10|end|_/#
+ifgo#/x|is|66|add1|_/#
+ifgo#/x|is|65|sub1|_/#
+set#/lastCursorPos|cursorPos/#
+mark#/afterOp/#
+ifgo#/cursorPos|is|lastCursorPos|loop|spewMenu/#
+
+
+mark#/spewMenu/#
+mark#/spewMenu/#
+ifgo#/cursorPos|is|1|_|not1/#
+color#/bright_green/#
+sys#/'clear'/#
+spew#/'Option 1'/#
+color#/reset/#
+spew#/'Option 2'/#
+spew#/'Option 3'/#
+go#/loop/#
+mark#/not1/#
+ifgo#/cursorPos|is|2|_|not2/#
+sys#/'clear'/#
+spew#/'Option 1'/#
+color#/bright_green/#
+spew#/'Option 2'/#
+color#/reset/#
+spew#/'Option 3'/#
+go#/loop/#
+mark#/not2/#
+sys#/'clear'/#
+spew#/'Option 1'/#
+spew#/'Option 2'/#
+color#/bright_green/#
+spew#/'Option 3'/#
+color#/reset/#
+go#/loop/#
+
+
+mark#/add1/#
+ifgo#/cursorPos|is|3|help1|_/#
+add#/cursorPos|cursorPos|1/#
+go#/afterOp/#
+mark#/help1/#
+set#/cursorPos|1/#
+go#/afterOp/#
+
+mark#/sub1/#
+ifgo#/cursorPos|is|1|help2|_/#
+sub#/cursorPos|cursorPos|1/#
+go#/afterOp/#
+mark#/help2/#
+set#/cursorPos|3/#
+go#/afterOp/#
+
+mark#/end/#
+ifgo#/cursorPos|is|1|_|a1/#
+spew#/'Option 1 selected.'/#
+bye
+mark#/a1/#
+ifgo#/cursorPos|is|2|_|a2/#
+spew#/'Option 2 selected.'/#
+bye
+mark#/a2/#
+spew#/'Option 3 selected.'/#
+bye

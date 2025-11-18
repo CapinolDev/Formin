@@ -1,6 +1,7 @@
 program forminvm
     use formin_lists
     use formin_opcodes
+    use formin_keyboard
 
     implicit none
 
@@ -23,12 +24,13 @@ program forminvm
     character (len=1024) :: osSeperator, strSave
     character (len=5) :: osClear
     integer :: i, finalValInt
+    integer :: lastKeyCode = 0
     integer, allocatable :: goStack(:)
     integer :: goDepth = 0
     character(len=256) :: finalValStr
     character(len=256) :: userOs
     real :: r, r2
-    integer :: jdx, intVal, subId
+    integer :: jdx, intVal, subId, skipCount
     character(len=256), allocatable :: tmp(:)
     character(len=256) :: tmpStr
     character(len=256) :: suffix
@@ -79,6 +81,7 @@ program forminvm
     character(len=256), allocatable :: stdinQueue(:)
     integer :: stdinQueueCount = 0
     integer :: stdinQueueCapacity = 0
+    integer :: suffixSkipCounters(0:255)
     integer :: INTERN_LIST_CREATE, INTERN_LIST_NEW, INTERN_LIST_PUSH, INTERN_LIST_GET
     integer :: INTERN_LIST_SET, INTERN_LIST_LEN, INTERN_LIST_POP, INTERN_LIST_CLEAR
     integer :: INTERN_LIST_RESERVE
@@ -99,7 +102,7 @@ program forminvm
         userOs = 'Unix'
     end if
 
-    version = '1.1.5'
+    version = '1.1.6'
 
     VarCount = 0
     MarkerCount = 0
@@ -127,6 +130,7 @@ program forminvm
     INTERN_STR_UP  = intern_string("up")
     INTERN_STR_LEN = intern_string("len")
     lineNumber = 0
+    suffixSkipCounters = 0
 
 
 
@@ -222,9 +226,9 @@ program forminvm
 
         if (Parsed(lineNumber)%cmdId /= OP_NONE) then
             suffix = Parsed(lineNumber)%suffix
-            if (trim(suffix) == '' .or. trim(suffix) == '!') then
-                call execute_command(Parsed(lineNumber)%cmdId, Parsed(lineNumber)%tokens, Parsed(lineNumber)%ntok, lineNumber)
-            else if (trim(suffix) == '?') then
+            if (should_skip_suffix_line(suffix)) cycle
+               
+            if (trim(suffix) == '?') then
                 foundLine = .false.
                 do i = 1, numLinesCalled
                     if (usedLines(i) == lineNumber) then
@@ -237,7 +241,10 @@ program forminvm
                     usedLines(numLinesCalled) = lineNumber
                     call execute_command(Parsed(lineNumber)%cmdId, Parsed(lineNumber)%tokens, Parsed(lineNumber)%ntok, lineNumber)
                 end if
+            else
+                 call execute_command(Parsed(lineNumber)%cmdId, Parsed(lineNumber)%tokens, Parsed(lineNumber)%ntok, lineNumber)
             end if
+
         end if
     end do
 contains
@@ -837,6 +844,67 @@ contains
         end if
     end function cmp_values
 
+    logical function should_skip_suffix_line(rawSuffix)
+        character(len=*), intent(in) :: rawSuffix
+        integer :: idx, code, lb, ub
+        character(len=1) :: ch
+        logical :: found
+
+        should_skip_suffix_line = .false.
+        ch = achar(0)
+        found = .false.
+
+        do idx = 1, len(rawSuffix)
+            if (rawSuffix(idx:idx) /= ' ') then
+                ch = rawSuffix(idx:idx)
+                found = .true.
+                exit
+            end if
+        end do
+
+        if (.not. found) return
+
+        lb = lbound(suffixSkipCounters,1)
+        ub = ubound(suffixSkipCounters,1)
+        code = iachar(ch)
+
+        if (code < lb .or. code > ub) return
+
+        if (suffixSkipCounters(code) > 0) then
+            suffixSkipCounters(code) = suffixSkipCounters(code) - 1
+            should_skip_suffix_line = .true.
+        end if
+    end function should_skip_suffix_line
+
+    logical function register_suffix_skips(mask, count)
+        character(len=*), intent(in) :: mask
+        integer, intent(in) :: count
+        integer :: idx, code, lb, ub, limit
+        logical :: seen(0:255)
+        character(len=1) :: ch
+
+        register_suffix_skips = .false.
+        if (count <= 0) return
+
+        limit = len_trim(mask)
+        if (limit <= 0) return
+
+        lb = lbound(suffixSkipCounters,1)
+        ub = ubound(suffixSkipCounters,1)
+        seen = .false.
+
+        do idx = 1, limit
+            ch = mask(idx:idx)
+            if (ch == ' ') cycle
+            code = iachar(ch)
+            if (code < lb .or. code > ub) cycle
+            if (seen(code)) cycle
+            suffixSkipCounters(code) = suffixSkipCounters(code) + count
+            seen(code) = .true.
+            register_suffix_skips = .true.
+        end do
+    end function register_suffix_skips
+
     logical function parse_int_string(str, value)
         character(len=*), intent(in) :: str
         integer, intent(out) :: value
@@ -1234,7 +1302,7 @@ contains
             OP_ADD, OP_SUB, OP_MULT, OP_DIV, OP_MARK, OP_GO, OP_IFGO, OP_ASK, &
             OP_CLEAR, OP_OPEN, OP_READ, OP_CLOSE, OP_GOBACK, OP_STR, OP_TYPE, &
             OP_SET, OP_MOD, OP_GETOS, OP_RANDI, OP_SQRT, OP_LIST, OP_SYS, &
-            OP_CPUTIME, OP_INS
+            OP_CPUTIME, OP_INS, OP_KEY, OP_IFSKIP
         integer, intent(in) :: cmdId
         character(len=256), intent(in) :: tokens(:)
         integer, intent(inout) :: ntok, lineNumber
@@ -1366,6 +1434,34 @@ contains
                         call exit(1)
                     end if
                 end if
+            case (OP_IFSKIP)
+                if (ntok == 5) then
+                    s1 = resolveToken_fast(tokens(1))
+                    s2 = resolveToken_fast(tokens(3))
+                    if (cmp_values(s1, s2, trim(tokens(2)))) then
+                        s3 = resolveToken_fast(tokens(4))
+                        tempRead = resolveToken_fast(tokens(5))
+                        read(tempRead, *, iostat=ios_local) skipCount
+                        if (ios_local /= 0 .or. skipCount <= 0) then
+                            write(*,*) "Error: ifskip requires a positive numeric skip count"
+                            if (suffix=='!') then
+                                call exit(1)
+                            end if
+                        else
+                            if (.not. register_suffix_skips(s3, skipCount)) then
+                                write(*,*) "Error: ifskip could not find any suffix characters to skip"
+                                if (suffix=='!') then
+                                    call exit(1)
+                                end if
+                            end if
+                        end if
+                    end if
+                else
+                    write(*,*) "Error: ifskip requires 5 tokens: lhs|op|rhs|suffixes|count"
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
 
             case (OP_ASK)
                 if (ntok==2) then
@@ -1393,6 +1489,21 @@ contains
                     end if
                 else
                     print*,'Error: ask requires 2 tokens: question|var (where the answer is stored)'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+            case (OP_KEY)
+                if (ntok == 1) then
+                    intVal = key_pressed()
+                    if (intVal > 0) then
+                        lastKeyCode = intVal
+                    else if (lastKeyCode > 0) then
+                        if (.not. key_held(lastKeyCode)) lastKeyCode = 0
+                    end if
+                    call setVar(trim(tokens(1)), trim(toString(lastKeyCode)), 'int')
+                else
+                    write(*,*) "Error: key requires 1 token: var"
                     if (suffix=='!') then
                         call exit(1)
                     end if

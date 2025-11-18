@@ -141,12 +141,26 @@ program forminc
             else
                 call assign_tokens(n)
             end if
+        case ("ifskip")
+            Program(ProgCount)%op = OP_IFSKIP
+            if (n /= 5) then
+                call warn(lineNo, "ifskip requires 5 tokens: lhs|op|rhs|suffixes|count")
+            else
+                call assign_tokens(n)
+            end if
         case ("ask")
             Program(ProgCount)%op = OP_ASK
             if (n < 2) then
                 call warn(lineNo, "ask requires 2 tokens: question|var")
             else
                 call assign_tokens(n)
+            end if
+        case ("key")
+            Program(ProgCount)%op = OP_KEY
+            if (n /= 1) then
+                call warn(lineNo, "key requires 1 token: var")
+            else
+                call assign_tokens(1)
             end if
         case ("ins")
             Program(ProgCount)%op = OP_INS

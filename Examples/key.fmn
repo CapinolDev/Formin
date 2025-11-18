@@ -1,0 +1,5 @@
+mark#/loop/#
+key#/x/#
+ifgo#/x|isnt|0|_|loop/#
+spew#/x/#
+go#/loop/#

@@ -1,0 +1,8 @@
+ask#/'Input a number'|x/#
+mod#/xMod|x|2/#
+ifskip#/xMod|is|0|??|2/#
+spew#/x|'is odd.'/#??
+go#/end/#??
+spew#/x|'is even.'/#
+mark#/end/#
+bye
