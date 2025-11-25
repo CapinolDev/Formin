@@ -3,7 +3,7 @@
 # Formin Language 
 > A symbolic, flow-based programming language written in Fortran - now delivered as a compiled toolchain for performance and portability.
 
-**Version:** 1.1.6
+**Version:** 1.1.7
 **Author:** Capinol  
 **Toolchain:** `forminc` (compiler) + `forminvm` (virtual machine)
 
@@ -158,6 +158,10 @@ Example: ``` color#/green/# ```
 #### clear#//#
 clears the terminal, same as 'clear' on UNIX and 'cls' on Win.
 Example: ``` clear#//# ```
+
+#### achar/ichar
+either turns number into character or vice versa.
+[Example](Examples/achicar.fmn)
 
 ### Execution
 

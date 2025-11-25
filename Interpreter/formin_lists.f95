@@ -7,7 +7,6 @@
         public :: List
         public :: createList, findList, listPush, listSet, listGet, listLen, listClear, listPop
         public :: resizeList, listPushCached
-        ! New/optimized APIs:
         public :: listReserveLazy
         public :: findListIdx, listPushIdx, listSetIdx, listGetIdx
         public :: createListIfMissing

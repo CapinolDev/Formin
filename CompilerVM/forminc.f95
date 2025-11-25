@@ -344,8 +344,21 @@ program forminc
             else 
                 call assign_tokens(n)
             end if
-        
+        case("achar")
+            Program(ProgCount)%op = OP_ACHAR
+            if (n<2) then
+                call warn(lineNo, "achar requires 2 tokens: var|num")
+            else
+                call assign_tokens(n)
+            end if 
 
+        case("ichar")
+            Program(ProgCount)%op = OP_ICHAR
+            if (n<2) then
+                call warn(lineNo, "ichar requires 2 tokens: var|num")
+            else
+                call assign_tokens(n)
+            end if 
         case default
           
             call warn(lineNo, "unknown command '"//trim(cmd)//"' (skipped)")

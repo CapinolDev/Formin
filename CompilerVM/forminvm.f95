@@ -4,7 +4,7 @@ program forminvm
     use formin_keyboard
 
     implicit none
-
+    
     character(len=5) :: version
     integer :: ios
     integer :: nextFileUnit = 20
@@ -35,7 +35,7 @@ program forminvm
     character(len=256) :: tmpStr
     character(len=256) :: suffix
     real :: timerStart, timerEnd
-
+    character(len=1) :: ch
     
     
     type :: Var
@@ -102,7 +102,7 @@ program forminvm
         userOs = 'Unix'
     end if
 
-    version = '1.1.6'
+    version = '1.1.7'
 
     VarCount = 0
     MarkerCount = 0
@@ -1302,7 +1302,7 @@ contains
             OP_ADD, OP_SUB, OP_MULT, OP_DIV, OP_MARK, OP_GO, OP_IFGO, OP_ASK, &
             OP_CLEAR, OP_OPEN, OP_READ, OP_CLOSE, OP_GOBACK, OP_STR, OP_TYPE, &
             OP_SET, OP_MOD, OP_GETOS, OP_RANDI, OP_SQRT, OP_LIST, OP_SYS, &
-            OP_CPUTIME, OP_INS, OP_KEY, OP_IFSKIP
+            OP_CPUTIME, OP_INS, OP_KEY, OP_IFSKIP, OP_ACHAR
         integer, intent(in) :: cmdId
         character(len=256), intent(in) :: tokens(:)
         integer, intent(inout) :: ntok, lineNumber
@@ -1900,7 +1900,7 @@ contains
                             if (suffix=='!') call exit(1)
                         else
                             if (Parsed(lineNumber)%listIndex < 1) then
-                                Parsed(lineNumber)%listIndex = findList(Lists, ListCount, trim(tokens(2)))
+                                Parsed(lineNumber)%listIndex = findList(Lists, ListCount, resolveToken_fast(tokens(2)))
                                 if (Parsed(lineNumber)%listIndex < 1) then
                                     call createList(Lists, ListCount, trim(tokens(2)))
                                     Parsed(lineNumber)%listIndex = ListCount
@@ -2061,6 +2061,33 @@ contains
                     r = ceiling(r)
                     write(s2,'(G0)') r
                     call setVar(trim(s1), trim(s2))
+                end if
+            case(OP_ACHAR)
+                if (ntok==2) then
+                    s1=trim(tokens(1))
+                    s2 = resolveToken_fast(tokens(2))
+                    read(s2,*) a
+                    s2 = achar(a)
+                    call setVar(trim(s1),trim(s2))
+                else 
+                    write(*,*) 'Error: achar requires 2 tokens: var|num'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
+                end if
+            case(OP_ICHAR)
+                if (ntok==2) then
+                    s1=trim(tokens(1))
+                    s2 = resolveToken_fast(tokens(2))
+                    ch = trim(s2)
+                    i = ichar(ch)
+                    write(s2,*) i
+                    call setVar(trim(s1),trim(s2))
+                else 
+                    write(*,*) 'Error:ichar requires 2 tokens: var|char'
+                    if (suffix=='!') then
+                        call exit(1)
+                    end if
                 end if
             case default
                 write(*,'(A,I0)') "Unknown opcode: ", cmdId

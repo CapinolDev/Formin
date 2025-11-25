@@ -1,0 +1,7 @@
+list#/create|a1/#
+
+create#/choice|a1/#
+list#/push|choice|'hello'/#
+create#/lenList/#
+spew#/a1[1]/#
+list#/len|lenList|a1/#

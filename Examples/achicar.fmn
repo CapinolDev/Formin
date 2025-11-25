@@ -1,0 +1,6 @@
+ask#/input character:|char/#
+ichar#/inIchar|char/#
+ask#/input int:|int/#
+achar#/inAchar|int/#
+spew#/inIchar/#
+spew#/inAchar/#

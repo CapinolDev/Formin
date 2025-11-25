@@ -9,5 +9,5 @@ module formin_opcodes
                           OP_SYS=26, OP_CPUTIME=27, OP_POW = 28, OP_SIN = 29, &
                           OP_COS = 30, OP_TAN = 31, OP_BYE = 32, OP_ABS = 33, &
                           OP_FLOOR=34, OP_CEILING = 35, OP_EXIT = 36, OP_INS = 37, &
-                          OP_KEY = 38, OP_IFSKIP = 39
+                          OP_KEY = 38, OP_IFSKIP = 39, OP_ACHAR = 40, OP_ICHAR=41
 end module formin_opcodes
